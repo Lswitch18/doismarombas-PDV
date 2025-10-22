@@ -9,6 +9,7 @@ import {
   FileBarChart,
   Settings,
 } from "lucide-react";
+import logo from "@/assets/logo.png";
 import {
   Sidebar,
   SidebarContent,
@@ -40,16 +41,16 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Package className="h-5 w-5 text-primary-foreground" />
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg overflow-hidden bg-background flex items-center justify-center p-1">
+            <img src={logo} alt="Logo" className="h-full w-full object-contain" />
           </div>
           {!isCollapsed && (
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-sidebar-foreground">
                 Distribuidora
               </span>
-              <span className="text-xs text-muted-foreground">Gestão Total</span>
+              <span className="text-xs text-muted-foreground">Sistema de Gestão</span>
             </div>
           )}
         </div>
