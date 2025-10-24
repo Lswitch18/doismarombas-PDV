@@ -42,13 +42,13 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg overflow-hidden bg-background flex items-center justify-center p-1">
+          <div className="h-10 w-10 rounded-xl overflow-hidden bg-primary/10 flex items-center justify-center p-1.5 ring-2 ring-primary/20">
             <img src={logo} alt="Logo" className="h-full w-full object-contain" />
           </div>
           {!isCollapsed && (
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-sidebar-foreground">
-                Distribuidora
+              <span className="text-base font-bold text-sidebar-foreground">
+                Flow Dash
               </span>
               <span className="text-xs text-muted-foreground">Sistema de Gestão</span>
             </div>
@@ -69,8 +69,8 @@ export function AppSidebar() {
                       end={item.url === "/"}
                       className={({ isActive }) =>
                         isActive
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                          : "hover:bg-sidebar-accent/50"
+                          ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                          : "hover:bg-sidebar-accent/50 transition-colors"
                       }
                     >
                       <item.icon className="h-4 w-4" />

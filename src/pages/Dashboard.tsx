@@ -12,8 +12,10 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useVendas } from "@/hooks/useVendas";
+import { useProdutos } from "@/hooks/useProdutos";
 
-// Dados mockados para demonstração
+// Dados mockados para demonstração dos gráficos
 const salesData = [
   { name: "Seg", vendas: 2400 },
   { name: "Ter", vendas: 1398 },
@@ -33,8 +35,22 @@ const topProducts = [
 ];
 
 export default function Dashboard() {
+  const { vendas } = useVendas();
+  const { produtos } = useProdutos();
+
+  // Cálculos reais
+  const totalVendas = vendas?.reduce((acc, v) => acc + Number(v.total), 0) || 0;
+  const vendasDia = vendas?.filter(v => {
+    const hoje = new Date();
+    const dataVenda = new Date(v.created_at);
+    return dataVenda.toDateString() === hoje.toDateString();
+  }).reduce((acc, v) => acc + Number(v.total), 0) || 0;
+
+  const totalProdutos = produtos?.length || 0;
+  const produtosBaixoEstoque = produtos?.filter(p => p.estoque <= p.estoque_minimo).length || 0;
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
@@ -46,36 +62,48 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Saldo em Caixa"
-          value="R$ 12.450,00"
+          value={`R$ ${totalVendas.toFixed(2)}`}
           icon={Wallet}
-          description="Valor disponível"
+          description="Valor total acumulado"
           trend={{ value: "12% vs. ontem", isPositive: true }}
+          iconColor="text-green-500"
+          iconBgColor="bg-green-500/10"
         />
         <StatCard
           title="Vendas do Dia"
-          value="R$ 4.320,00"
+          value={`R$ ${vendasDia.toFixed(2)}`}
           icon={TrendingUp}
-          description="38 transações"
+          description={`${vendas?.filter(v => {
+            const hoje = new Date();
+            const dataVenda = new Date(v.created_at);
+            return dataVenda.toDateString() === hoje.toDateString();
+          }).length || 0} transações`}
           trend={{ value: "8% vs. ontem", isPositive: true }}
+          iconColor="text-blue-500"
+          iconBgColor="bg-blue-500/10"
         />
         <StatCard
           title="Produtos em Estoque"
-          value="1.247"
+          value={totalProdutos.toString()}
           icon={Package}
-          description="12 produtos abaixo do mínimo"
+          description={`${produtosBaixoEstoque} produtos abaixo do mínimo`}
+          iconColor="text-purple-500"
+          iconBgColor="bg-purple-500/10"
         />
         <StatCard
           title="Lucro do Mês"
-          value="R$ 32.450,00"
+          value={`R$ ${(totalVendas * 0.23).toFixed(2)}`}
           icon={DollarSign}
-          description="Margem de 23%"
+          description="Margem estimada de 23%"
           trend={{ value: "15% vs. mês anterior", isPositive: true }}
+          iconColor="text-primary"
+          iconBgColor="bg-primary/10"
         />
       </div>
 
       {/* Gráficos */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        <Card className="animate-fade-up" style={{ animationDelay: "0.1s" }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5" />
@@ -92,22 +120,22 @@ export default function Dashboard() {
                   contentStyle={{
                     backgroundColor: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
+                    borderRadius: "12px",
                   }}
                 />
                 <Line
                   type="monotone"
                   dataKey="vendas"
                   stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={{ fill: "hsl(var(--primary))", r: 4 }}
+                  strokeWidth={3}
+                  dot={{ fill: "hsl(var(--primary))", r: 5 }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="animate-fade-up" style={{ animationDelay: "0.2s" }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
@@ -129,7 +157,7 @@ export default function Dashboard() {
                   contentStyle={{
                     backgroundColor: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
+                    borderRadius: "12px",
                   }}
                 />
                 <Bar dataKey="vendas" fill="hsl(var(--primary))" radius={[0, 8, 8, 0]} />
@@ -141,7 +169,7 @@ export default function Dashboard() {
 
       {/* Alertas e Últimas Movimentações */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        <Card className="animate-fade-up" style={{ animationDelay: "0.3s" }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-yellow-500" />
@@ -150,59 +178,58 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { produto: "Coca-Cola 2L", estoque: 8, minimo: 20 },
-                { produto: "Cerveja Brahma Lata", estoque: 12, minimo: 30 },
-                { produto: "Suco Del Valle 1L", estoque: 5, minimo: 15 },
-              ].map((item, idx) => (
+              {produtos?.filter(p => p.estoque <= p.estoque_minimo).slice(0, 5).map((produto) => (
                 <div
-                  key={idx}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                  key={produto.id}
+                  className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted/70 transition-colors"
                 >
                   <div>
-                    <p className="font-medium">{item.produto}</p>
+                    <p className="font-medium">{produto.nome}</p>
                     <p className="text-sm text-muted-foreground">
-                      Estoque: {item.estoque} (mínimo: {item.minimo})
+                      Estoque: {produto.estoque} (mínimo: {produto.estoque_minimo})
                     </p>
                   </div>
-                  <div className="text-yellow-500 font-semibold">
-                    {item.estoque} un
+                  <div className="text-yellow-500 font-semibold text-lg">
+                    {produto.estoque} un
                   </div>
                 </div>
               ))}
+              {(!produtos || produtos.filter(p => p.estoque <= p.estoque_minimo).length === 0) && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>Nenhum alerta de estoque</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="animate-fade-up" style={{ animationDelay: "0.4s" }}>
           <CardHeader>
             <CardTitle>Últimas Movimentações</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { tipo: "Venda", valor: 45.5, hora: "14:32" },
-                { tipo: "Venda", valor: 128.9, hora: "14:15" },
-                { tipo: "Entrada", valor: 500.0, hora: "13:45" },
-                { tipo: "Venda", valor: 67.3, hora: "13:22" },
-              ].map((mov, idx) => (
+              {vendas?.slice(0, 5).map((venda) => (
                 <div
-                  key={idx}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                  key={venda.id}
+                  className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted/70 transition-colors"
                 >
                   <div>
-                    <p className="font-medium">{mov.tipo}</p>
-                    <p className="text-sm text-muted-foreground">{mov.hora}</p>
+                    <p className="font-medium">Venda - {venda.clientes?.nome || "Cliente Avulso"}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(venda.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
                   </div>
-                  <div
-                    className={`font-semibold ${
-                      mov.tipo === "Venda" ? "text-green-500" : "text-blue-500"
-                    }`}
-                  >
-                    {mov.tipo === "Venda" ? "+" : ""}R$ {mov.valor.toFixed(2)}
+                  <div className="text-green-500 font-semibold text-lg">
+                    +R$ {Number(venda.total).toFixed(2)}
                   </div>
                 </div>
               ))}
+              {(!vendas || vendas.length === 0) && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>Nenhuma movimentação registrada</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
