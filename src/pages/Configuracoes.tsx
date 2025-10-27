@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,18 +7,92 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Settings, Store, Bell, Database, Shield, Palette } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Configuracoes() {
-  const [nomeEmpresa, setNomeEmpresa] = useState("Distribuidora Flow");
-  const [email, setEmail] = useState("contato@flowdash.com");
+  const [loading, setLoading] = useState(true);
+  const [configId, setConfigId] = useState<string | null>(null);
+  const [nomeEmpresa, setNomeEmpresa] = useState("Dois Marombas");
+  const [email, setEmail] = useState("contato@doismarombas.com");
   const [telefone, setTelefone] = useState("(11) 98765-4321");
   const [notificacoesEmail, setNotificacoesEmail] = useState(true);
   const [notificacoesEstoque, setNotificacoesEstoque] = useState(true);
   const [modoEscuro, setModoEscuro] = useState(true);
 
-  const salvarConfiguracoes = () => {
-    toast.success("Configurações salvas com sucesso!");
+  useEffect(() => {
+    carregarConfiguracoes();
+  }, []);
+
+  const carregarConfiguracoes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("configuracoes")
+        .select("*")
+        .limit(1)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setConfigId(data.id);
+        setNomeEmpresa(data.nome_empresa);
+        setEmail(data.email);
+        setTelefone(data.telefone);
+        setNotificacoesEmail(data.notificacoes_email);
+        setNotificacoesEstoque(data.notificacoes_estoque);
+        setModoEscuro(data.modo_escuro);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar configurações:", error);
+      toast.error("Erro ao carregar configurações");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const salvarConfiguracoes = async () => {
+    try {
+      const dadosConfig = {
+        nome_empresa: nomeEmpresa,
+        email,
+        telefone,
+        notificacoes_email: notificacoesEmail,
+        notificacoes_estoque: notificacoesEstoque,
+        modo_escuro: modoEscuro,
+      };
+
+      if (configId) {
+        const { error } = await supabase
+          .from("configuracoes")
+          .update(dadosConfig)
+          .eq("id", configId);
+
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("configuracoes")
+          .insert([dadosConfig])
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (data) setConfigId(data.id);
+      }
+
+      toast.success("Configurações salvas com sucesso!");
+    } catch (error) {
+      console.error("Erro ao salvar configurações:", error);
+      toast.error("Erro ao salvar configurações");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">

@@ -59,6 +59,42 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          modo_escuro: boolean
+          nome_empresa: string
+          notificacoes_email: boolean
+          notificacoes_estoque: boolean
+          telefone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          modo_escuro?: boolean
+          nome_empresa?: string
+          notificacoes_email?: boolean
+          notificacoes_estoque?: boolean
+          telefone: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          modo_escuro?: boolean
+          nome_empresa?: string
+          notificacoes_email?: boolean
+          notificacoes_estoque?: boolean
+          telefone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fornecedores: {
         Row: {
           ativo: boolean | null

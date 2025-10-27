@@ -48,7 +48,7 @@ export function AppSidebar() {
           {!isCollapsed && (
             <div className="flex flex-col">
               <span className="text-base font-bold text-sidebar-foreground">
-                Flow Dash
+                Dois Marombas
               </span>
               <span className="text-xs text-muted-foreground">Sistema de Gestão</span>
             </div>
