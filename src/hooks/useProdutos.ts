@@ -6,6 +6,7 @@ export interface Produto {
   id: string;
   nome: string;
   preco: number;
+  preco_aquisicao: number;
   estoque: number;
   estoque_minimo: number;
   codigo_barras?: string;

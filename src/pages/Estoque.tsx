@@ -30,6 +30,7 @@ export default function Estoque() {
   const [formData, setFormData] = useState({
     nome: "",
     preco: "",
+    preco_aquisicao: "",
     estoque: "",
     estoque_minimo: "",
     codigo_barras: "",
@@ -51,6 +52,7 @@ export default function Estoque() {
     const data = {
       nome: formData.nome,
       preco: parseFloat(formData.preco),
+      preco_aquisicao: parseFloat(formData.preco_aquisicao),
       estoque: parseInt(formData.estoque),
       estoque_minimo: parseInt(formData.estoque_minimo),
       codigo_barras: formData.codigo_barras || undefined,
@@ -73,6 +75,7 @@ export default function Estoque() {
     setFormData({
       nome: "",
       preco: "",
+      preco_aquisicao: "",
       estoque: "",
       estoque_minimo: "",
       codigo_barras: "",
@@ -87,6 +90,7 @@ export default function Estoque() {
     setFormData({
       nome: product.nome,
       preco: product.preco.toString(),
+      preco_aquisicao: product.preco_aquisicao?.toString() || "0",
       estoque: product.estoque.toString(),
       estoque_minimo: product.estoque_minimo.toString(),
       codigo_barras: product.codigo_barras || "",
@@ -136,13 +140,23 @@ export default function Estoque() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Preço (R$) *</Label>
+                  <Label>Preço Venda (R$) *</Label>
                   <Input
                     required
                     type="number"
                     step="0.01"
                     value={formData.preco}
                     onChange={(e) => setFormData({ ...formData, preco: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Preço Aquisição (R$) *</Label>
+                  <Input
+                    required
+                    type="number"
+                    step="0.01"
+                    value={formData.preco_aquisicao}
+                    onChange={(e) => setFormData({ ...formData, preco_aquisicao: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -223,47 +237,59 @@ export default function Estoque() {
                 <TableRow>
                   <TableHead>Produto</TableHead>
                   <TableHead>Marca</TableHead>
-                  <TableHead>Preço</TableHead>
+                  <TableHead>Preço Venda</TableHead>
+                  <TableHead>Margem</TableHead>
                   <TableHead>Estoque</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts?.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell className="font-medium">{product.nome}</TableCell>
-                    <TableCell>{product.marca || "-"}</TableCell>
-                    <TableCell>R$ {product.preco.toFixed(2)}</TableCell>
-                    <TableCell>{product.estoque}</TableCell>
-                    <TableCell>
-                      {product.estoque <= product.estoque_minimo ? (
-                        <Badge variant="destructive" className="gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          Baixo
+                {filteredProducts?.map((product) => {
+                  const margem = product.preco_aquisicao > 0 
+                    ? ((product.preco - product.preco_aquisicao) / product.preco_aquisicao) * 100 
+                    : 0;
+                  
+                  return (
+                    <TableRow key={product.id}>
+                      <TableCell className="font-medium">{product.nome}</TableCell>
+                      <TableCell>{product.marca || "-"}</TableCell>
+                      <TableCell>R$ {product.preco.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Badge variant={margem > 30 ? "default" : margem > 15 ? "secondary" : "destructive"}>
+                          {margem.toFixed(1)}%
                         </Badge>
-                      ) : (
-                        <Badge variant="default">Normal</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(product)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(product.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell>{product.estoque}</TableCell>
+                      <TableCell>
+                        {product.estoque <= product.estoque_minimo ? (
+                          <Badge variant="destructive" className="gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Baixo
+                          </Badge>
+                        ) : (
+                          <Badge variant="default">Normal</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(product)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(product.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

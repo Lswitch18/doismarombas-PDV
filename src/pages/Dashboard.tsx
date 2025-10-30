@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { StatCard } from "@/components/Dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wallet, TrendingUp, Package, ShoppingCart, DollarSign, AlertTriangle } from "lucide-react";
@@ -14,6 +15,10 @@ import {
 } from "recharts";
 import { useVendas } from "@/hooks/useVendas";
 import { useProdutos } from "@/hooks/useProdutos";
+import { useLucros } from "@/hooks/useLucros";
+import { VendasDetalhesModal } from "@/components/Dashboard/VendasDetalhesModal";
+import { startOfDay, endOfDay, startOfMonth, endOfMonth } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 // Dados mockados para demonstração dos gráficos
 const salesData = [
@@ -35,19 +40,48 @@ const topProducts = [
 ];
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { vendas } = useVendas();
   const { produtos } = useProdutos();
+  const { lucroDia, lucroMes, lucroAno } = useLucros();
+  
+  const [modalAberto, setModalAberto] = useState<string | null>(null);
+  const [vendasModal, setVendasModal] = useState<any[]>([]);
+  const [tituloModal, setTituloModal] = useState("");
 
   // Cálculos reais
   const totalVendas = vendas?.reduce((acc, v) => acc + Number(v.total), 0) || 0;
+  
+  const hoje = new Date();
   const vendasDia = vendas?.filter(v => {
-    const hoje = new Date();
     const dataVenda = new Date(v.created_at);
-    return dataVenda.toDateString() === hoje.toDateString();
-  }).reduce((acc, v) => acc + Number(v.total), 0) || 0;
+    return dataVenda >= startOfDay(hoje) && dataVenda <= endOfDay(hoje);
+  }) || [];
+  
+  const vendasMes = vendas?.filter(v => {
+    const dataVenda = new Date(v.created_at);
+    return dataVenda >= startOfMonth(hoje) && dataVenda <= endOfMonth(hoje);
+  }) || [];
 
+  const vendasHojeSoma = vendasDia.reduce((acc, v) => acc + Number(v.total), 0);
   const totalProdutos = produtos?.length || 0;
   const produtosBaixoEstoque = produtos?.filter(p => p.estoque <= p.estoque_minimo).length || 0;
+
+  const abrirModalVendas = (tipo: string) => {
+    switch (tipo) {
+      case "dia":
+        setVendasModal(vendasDia);
+        setTituloModal("Vendas do Dia");
+        break;
+      case "mes":
+        setVendasModal(vendasMes);
+        setTituloModal("Vendas do Mês");
+        break;
+      default:
+        setVendasModal([]);
+    }
+    setModalAberto(tipo);
+  };
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -58,46 +92,51 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Cards de Estatísticas */}
+      {/* Cards de Estatísticas - Clicáveis */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div onClick={() => abrirModalVendas("dia")} className="cursor-pointer">
+          <StatCard
+            title="Vendas do Dia"
+            value={`R$ ${vendasHojeSoma.toFixed(2)}`}
+            icon={TrendingUp}
+            description={`${vendasDia.length} transações`}
+            trend={{ value: `Lucro: R$ ${lucroDia.toFixed(2)}`, isPositive: true }}
+            iconColor="text-blue-500"
+            iconBgColor="bg-blue-500/10"
+          />
+        </div>
+        
+        <div onClick={() => abrirModalVendas("mes")} className="cursor-pointer">
+          <StatCard
+            title="Lucro do Mês"
+            value={`R$ ${lucroMes.toFixed(2)}`}
+            icon={DollarSign}
+            description={`${vendasMes.length} vendas`}
+            trend={{ value: `Total: R$ ${vendasMes.reduce((acc, v) => acc + Number(v.total), 0).toFixed(2)}`, isPositive: true }}
+            iconColor="text-primary"
+            iconBgColor="bg-primary/10"
+          />
+        </div>
+
+        <div onClick={() => navigate("/estoque")} className="cursor-pointer">
+          <StatCard
+            title="Produtos em Estoque"
+            value={totalProdutos.toString()}
+            icon={Package}
+            description={`${produtosBaixoEstoque} produtos abaixo do mínimo`}
+            iconColor="text-purple-500"
+            iconBgColor="bg-purple-500/10"
+          />
+        </div>
+
         <StatCard
-          title="Saldo em Caixa"
-          value={`R$ ${totalVendas.toFixed(2)}`}
+          title="Lucro Acumulado (Ano)"
+          value={`R$ ${lucroAno.toFixed(2)}`}
           icon={Wallet}
-          description="Valor total acumulado"
-          trend={{ value: "12% vs. ontem", isPositive: true }}
+          description="Performance anual"
+          trend={{ value: `${vendas?.length || 0} vendas totais`, isPositive: true }}
           iconColor="text-green-500"
           iconBgColor="bg-green-500/10"
-        />
-        <StatCard
-          title="Vendas do Dia"
-          value={`R$ ${vendasDia.toFixed(2)}`}
-          icon={TrendingUp}
-          description={`${vendas?.filter(v => {
-            const hoje = new Date();
-            const dataVenda = new Date(v.created_at);
-            return dataVenda.toDateString() === hoje.toDateString();
-          }).length || 0} transações`}
-          trend={{ value: "8% vs. ontem", isPositive: true }}
-          iconColor="text-blue-500"
-          iconBgColor="bg-blue-500/10"
-        />
-        <StatCard
-          title="Produtos em Estoque"
-          value={totalProdutos.toString()}
-          icon={Package}
-          description={`${produtosBaixoEstoque} produtos abaixo do mínimo`}
-          iconColor="text-purple-500"
-          iconBgColor="bg-purple-500/10"
-        />
-        <StatCard
-          title="Lucro do Mês"
-          value={`R$ ${(totalVendas * 0.23).toFixed(2)}`}
-          icon={DollarSign}
-          description="Margem estimada de 23%"
-          trend={{ value: "15% vs. mês anterior", isPositive: true }}
-          iconColor="text-primary"
-          iconBgColor="bg-primary/10"
         />
       </div>
 
@@ -220,8 +259,13 @@ export default function Dashboard() {
                       {new Date(venda.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
-                  <div className="text-green-500 font-semibold text-lg">
-                    +R$ {Number(venda.total).toFixed(2)}
+                  <div className="text-right">
+                    <div className="text-green-500 font-semibold text-lg">
+                      +R$ {Number(venda.total).toFixed(2)}
+                    </div>
+                    <div className="text-xs text-primary">
+                      Lucro: R$ {Number(venda.lucro_total || 0).toFixed(2)}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -234,6 +278,14 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de Vendas Detalhadas */}
+      <VendasDetalhesModal
+        open={modalAberto !== null}
+        onOpenChange={(open) => !open && setModalAberto(null)}
+        vendas={vendasModal}
+        titulo={tituloModal}
+      />
     </div>
   );
 }

@@ -150,6 +150,9 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          lucro_total: number
+          lucro_unitario: number
+          preco_aquisicao: number
           preco_unitario: number
           produto_id: string
           quantidade: number
@@ -159,6 +162,9 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          lucro_total?: number
+          lucro_unitario?: number
+          preco_aquisicao?: number
           preco_unitario: number
           produto_id: string
           quantidade: number
@@ -168,6 +174,9 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          lucro_total?: number
+          lucro_unitario?: number
+          preco_aquisicao?: number
           preco_unitario?: number
           produto_id?: string
           quantidade?: number
@@ -190,6 +199,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lucros_diarios: {
+        Row: {
+          created_at: string | null
+          data: string
+          id: string
+          lucro_total: number
+        }
+        Insert: {
+          created_at?: string | null
+          data?: string
+          id?: string
+          lucro_total?: number
+        }
+        Update: {
+          created_at?: string | null
+          data?: string
+          id?: string
+          lucro_total?: number
+        }
+        Relationships: []
       }
       movimentacoes_estoque: {
         Row: {
@@ -266,6 +296,7 @@ export type Database = {
           marca: string | null
           nome: string
           preco: number
+          preco_aquisicao: number
           updated_at: string | null
         }
         Insert: {
@@ -281,6 +312,7 @@ export type Database = {
           marca?: string | null
           nome: string
           preco: number
+          preco_aquisicao?: number
           updated_at?: string | null
         }
         Update: {
@@ -296,6 +328,7 @@ export type Database = {
           marca?: string | null
           nome?: string
           preco?: number
+          preco_aquisicao?: number
           updated_at?: string | null
         }
         Relationships: []
@@ -307,6 +340,7 @@ export type Database = {
           desconto: number | null
           forma_pagamento: string
           id: string
+          lucro_total: number
           observacoes: string | null
           status: string | null
           total: number
@@ -319,6 +353,7 @@ export type Database = {
           desconto?: number | null
           forma_pagamento: string
           id?: string
+          lucro_total?: number
           observacoes?: string | null
           status?: string | null
           total: number
@@ -331,6 +366,7 @@ export type Database = {
           desconto?: number | null
           forma_pagamento?: string
           id?: string
+          lucro_total?: number
           observacoes?: string | null
           status?: string | null
           total?: number

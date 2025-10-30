@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Settings, Store, Bell, Database, Shield, Palette } from "lucide-react";
+import { Settings, Store, Bell, Database, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,7 +17,6 @@ export default function Configuracoes() {
   const [telefone, setTelefone] = useState("(11) 98765-4321");
   const [notificacoesEmail, setNotificacoesEmail] = useState(true);
   const [notificacoesEstoque, setNotificacoesEstoque] = useState(true);
-  const [modoEscuro, setModoEscuro] = useState(true);
 
   useEffect(() => {
     carregarConfiguracoes();
@@ -40,7 +39,6 @@ export default function Configuracoes() {
         setTelefone(data.telefone);
         setNotificacoesEmail(data.notificacoes_email);
         setNotificacoesEstoque(data.notificacoes_estoque);
-        setModoEscuro(data.modo_escuro);
       }
     } catch (error) {
       console.error("Erro ao carregar configurações:", error);
@@ -58,7 +56,7 @@ export default function Configuracoes() {
         telefone,
         notificacoes_email: notificacoesEmail,
         notificacoes_estoque: notificacoesEstoque,
-        modo_escuro: modoEscuro,
+        modo_escuro: true, // Sistema sempre em modo escuro
       };
 
       if (configId) {
@@ -188,32 +186,6 @@ export default function Configuracoes() {
         </CardContent>
       </Card>
 
-      {/* Aparência */}
-      <Card className="animate-fade-up" style={{ animationDelay: "0.2s" }}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Palette className="h-5 w-5" />
-            Aparência
-          </CardTitle>
-          <CardDescription>
-            Customize a interface do sistema
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Modo Escuro</Label>
-              <p className="text-sm text-muted-foreground">
-                Interface com tema escuro (recomendado)
-              </p>
-            </div>
-            <Switch
-              checked={modoEscuro}
-              onCheckedChange={setModoEscuro}
-            />
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Segurança */}
       <Card className="animate-fade-up" style={{ animationDelay: "0.3s" }}>

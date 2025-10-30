@@ -126,6 +126,7 @@ export default function Caixa() {
     await criarVenda.mutateAsync({
       venda: {
         total,
+        lucro_total: 0, // Será calculado automaticamente pelos triggers
         desconto: 0,
         valor_recebido: parseFloat(receivedAmount),
         troco: change,

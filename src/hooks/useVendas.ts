@@ -6,6 +6,7 @@ export interface Venda {
   id: string;
   cliente_id?: string;
   total: number;
+  lucro_total: number;
   desconto: number;
   valor_recebido?: number;
   troco?: number;
