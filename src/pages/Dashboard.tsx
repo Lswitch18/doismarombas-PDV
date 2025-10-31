@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { StatCard } from "@/components/Dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wallet, TrendingUp, Package, ShoppingCart, DollarSign, AlertTriangle } from "lucide-react";
@@ -19,6 +19,7 @@ import { useLucros } from "@/hooks/useLucros";
 import { VendasDetalhesModal } from "@/components/Dashboard/VendasDetalhesModal";
 import { startOfDay, endOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 // Dados mockados para demonstração dos gráficos
 const salesData = [
@@ -31,14 +32,6 @@ const salesData = [
   { name: "Dom", vendas: 4300 },
 ];
 
-const topProducts = [
-  { name: "Coca-Cola 2L", vendas: 120 },
-  { name: "Água Mineral 500ml", vendas: 98 },
-  { name: "Cerveja Skol Lata", vendas: 87 },
-  { name: "Guaraná Antarctica 2L", vendas: 76 },
-  { name: "Pepsi 2L", vendas: 65 },
-];
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const { vendas } = useVendas();
@@ -48,6 +41,48 @@ export default function Dashboard() {
   const [modalAberto, setModalAberto] = useState<string | null>(null);
   const [vendasModal, setVendasModal] = useState<any[]>([]);
   const [tituloModal, setTituloModal] = useState("");
+  const [topProducts, setTopProducts] = useState<{ name: string; vendas: number }[]>([]);
+
+  // Buscar produtos mais vendidos
+  useEffect(() => {
+    const fetchTopProducts = async () => {
+      const { data, error } = await supabase
+        .from("itens_venda")
+        .select("produto_id, quantidade, produtos(nome)")
+        .order("quantidade", { ascending: false });
+
+      if (error) {
+        console.error("Erro ao buscar produtos mais vendidos:", error);
+        return;
+      }
+
+      // Agrupar por produto e somar quantidades
+      const productMap = new Map<string, { name: string; vendas: number }>();
+      
+      data?.forEach((item: any) => {
+        const productName = item.produtos?.nome || "Produto Desconhecido";
+        const existing = productMap.get(item.produto_id);
+        
+        if (existing) {
+          existing.vendas += item.quantidade;
+        } else {
+          productMap.set(item.produto_id, {
+            name: productName,
+            vendas: item.quantidade,
+          });
+        }
+      });
+
+      // Converter para array e ordenar
+      const topProductsArray = Array.from(productMap.values())
+        .sort((a, b) => b.vendas - a.vendas)
+        .slice(0, 5);
+
+      setTopProducts(topProductsArray);
+    };
+
+    fetchTopProducts();
+  }, []);
 
   // Cálculos reais
   const totalVendas = vendas?.reduce((acc, v) => acc + Number(v.total), 0) || 0;
@@ -202,6 +237,11 @@ export default function Dashboard() {
                 <Bar dataKey="vendas" fill="hsl(var(--primary))" radius={[0, 8, 8, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            {topProducts.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-muted-foreground">Nenhuma venda registrada ainda</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
