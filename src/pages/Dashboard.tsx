@@ -17,20 +17,10 @@ import { useVendas } from "@/hooks/useVendas";
 import { useProdutos } from "@/hooks/useProdutos";
 import { useLucros } from "@/hooks/useLucros";
 import { VendasDetalhesModal } from "@/components/Dashboard/VendasDetalhesModal";
-import { startOfDay, endOfDay, startOfMonth, endOfMonth } from "date-fns";
+import { startOfDay, endOfDay, startOfMonth, endOfMonth, subDays, format as formatDate } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-
-// Dados mockados para demonstração dos gráficos
-const salesData = [
-  { name: "Seg", vendas: 2400 },
-  { name: "Ter", vendas: 1398 },
-  { name: "Qua", vendas: 9800 },
-  { name: "Qui", vendas: 3908 },
-  { name: "Sex", vendas: 4800 },
-  { name: "Sáb", vendas: 3800 },
-  { name: "Dom", vendas: 4300 },
-];
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -42,6 +32,52 @@ export default function Dashboard() {
   const [vendasModal, setVendasModal] = useState<any[]>([]);
   const [tituloModal, setTituloModal] = useState("");
   const [topProducts, setTopProducts] = useState<{ name: string; vendas: number }[]>([]);
+  const [salesData, setSalesData] = useState<{ name: string; vendas: number }[]>([]);
+
+  // Buscar vendas da semana
+  useEffect(() => {
+    const calcularVendasSemana = () => {
+      if (!vendas) return;
+
+      const hoje = new Date();
+      const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+      const vendasPorDia = new Map<string, number>();
+
+      // Inicializar últimos 7 dias com 0
+      for (let i = 6; i >= 0; i--) {
+        const dia = subDays(hoje, i);
+        const nomeDia = diasSemana[dia.getDay()];
+        vendasPorDia.set(nomeDia, 0);
+      }
+
+      // Calcular vendas dos últimos 7 dias
+      vendas.forEach((venda) => {
+        const dataVenda = new Date(venda.created_at);
+        const diffDays = Math.floor((hoje.getTime() - dataVenda.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays >= 0 && diffDays < 7) {
+          const nomeDia = diasSemana[dataVenda.getDay()];
+          const valorAtual = vendasPorDia.get(nomeDia) || 0;
+          vendasPorDia.set(nomeDia, valorAtual + Number(venda.total));
+        }
+      });
+
+      // Converter para array mantendo ordem dos últimos 7 dias
+      const dadosFormatados = [];
+      for (let i = 6; i >= 0; i--) {
+        const dia = subDays(hoje, i);
+        const nomeDia = diasSemana[dia.getDay()];
+        dadosFormatados.push({
+          name: nomeDia,
+          vendas: vendasPorDia.get(nomeDia) || 0,
+        });
+      }
+
+      setSalesData(dadosFormatados);
+    };
+
+    calcularVendasSemana();
+  }, [vendas]);
 
   // Buscar produtos mais vendidos
   useEffect(() => {
