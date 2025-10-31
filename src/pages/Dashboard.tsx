@@ -324,27 +324,35 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {vendas?.slice(0, 5).map((venda) => (
-                <div
-                  key={venda.id}
-                  className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted/70 transition-colors"
-                >
-                  <div>
-                    <p className="font-medium">Venda - {venda.clientes?.nome || "Cliente Avulso"}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(venda.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-green-500 font-semibold text-lg">
-                      +R$ {Number(venda.total).toFixed(2)}
+              {vendas?.slice(0, 5).map((venda) => {
+                const dataVenda = new Date(venda.created_at);
+                const isHoje = dataVenda.toDateString() === new Date().toDateString();
+                
+                return (
+                  <div
+                    key={venda.id}
+                    className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted/70 transition-colors"
+                  >
+                    <div>
+                      <p className="font-medium">Venda - {venda.clientes?.nome || "Cliente Avulso"}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {isHoje ? 'Hoje' : formatDate(dataVenda, "dd/MM/yyyy", { locale: ptBR })} às {formatDate(dataVenda, "HH:mm", { locale: ptBR })}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {venda.forma_pagamento}
+                      </p>
                     </div>
-                    <div className="text-xs text-primary">
-                      Lucro: R$ {Number(venda.lucro_total || 0).toFixed(2)}
+                    <div className="text-right">
+                      <div className="text-green-500 font-semibold text-lg">
+                        +R$ {Number(venda.total).toFixed(2)}
+                      </div>
+                      <div className="text-xs text-primary">
+                        Lucro: R$ {Number(venda.lucro_total || 0).toFixed(2)}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {(!vendas || vendas.length === 0) && (
                 <div className="text-center py-8 text-muted-foreground">
                   <p>Nenhuma movimentação registrada</p>
