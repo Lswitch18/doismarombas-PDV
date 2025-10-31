@@ -15,6 +15,8 @@ import {
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function Relatorios() {
   const [periodo, setPeriodo] = useState("mes-atual");
@@ -82,7 +84,86 @@ export default function Relatorios() {
   };
 
   const exportarPDF = () => {
-    toast.info("Exportação PDF em desenvolvimento");
+    if (!vendasFiltradas.length) {
+      toast.error("Não há dados para exportar");
+      return;
+    }
+
+    const doc = new jsPDF();
+    
+    // Cabeçalho
+    doc.setFontSize(20);
+    doc.setTextColor(40);
+    doc.text("Dois Marombas", 14, 22);
+    
+    doc.setFontSize(12);
+    doc.setTextColor(100);
+    doc.text("Relatório de Vendas", 14, 30);
+    
+    doc.setFontSize(10);
+    doc.text(
+      `Período: ${format(inicio, "dd/MM/yyyy", { locale: ptBR })} - ${format(fim, "dd/MM/yyyy", { locale: ptBR })}`,
+      14,
+      38
+    );
+
+    // Resumo
+    doc.setFontSize(11);
+    doc.setTextColor(60);
+    doc.text(`Total de Vendas: R$ ${totalVendas.toFixed(2)}`, 14, 48);
+    doc.text(`Quantidade de Transações: ${quantidadeVendas}`, 14, 55);
+    doc.text(`Ticket Médio: R$ ${ticketMedio.toFixed(2)}`, 14, 62);
+
+    // Tabela de vendas
+    const tableData = vendasFiltradas.map((venda) => [
+      format(new Date(venda.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+      venda.clientes?.nome || "Cliente Avulso",
+      `R$ ${Number(venda.total).toFixed(2)}`,
+      `R$ ${Number(venda.lucro_total || 0).toFixed(2)}`,
+      venda.forma_pagamento,
+      venda.status,
+    ]);
+
+    autoTable(doc, {
+      startY: 70,
+      head: [["Data", "Cliente", "Total", "Lucro", "Pagamento", "Status"]],
+      body: tableData,
+      theme: "grid",
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontSize: 10,
+        fontStyle: "bold",
+      },
+      bodyStyles: {
+        fontSize: 9,
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+    });
+
+    // Rodapé
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(
+        `Página ${i} de ${pageCount}`,
+        doc.internal.pageSize.width / 2,
+        doc.internal.pageSize.height - 10,
+        { align: "center" }
+      );
+      doc.text(
+        `Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })}`,
+        14,
+        doc.internal.pageSize.height - 10
+      );
+    }
+
+    doc.save(`relatorio-vendas-${format(new Date(), "dd-MM-yyyy")}.pdf`);
+    toast.success("Relatório PDF gerado com sucesso!");
   };
 
   return (
