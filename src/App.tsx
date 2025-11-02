@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/Layout/AppLayout";
+import { ProtectedRoute } from "./components/Auth/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Estoque from "./pages/Estoque";
 import Caixa from "./pages/Caixa";
@@ -12,6 +13,7 @@ import Clientes from "./pages/Clientes";
 import Fornecedores from "./pages/Fornecedores";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,19 +24,66 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppLayout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/estoque" element={<Estoque />} />
-            <Route path="/caixa" element={<Caixa />} />
-            <Route path="/vendas" element={<Vendas />} />
-            <Route path="/clientes" element={<Clientes />} />
-            <Route path="/fornecedores" element={<Fornecedores />} />
-            <Route path="/relatorios" element={<Relatorios />} />
-            <Route path="/configuracoes" element={<Configuracoes />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AppLayout>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Dashboard />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/estoque" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Estoque />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/caixa" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Caixa />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/vendas" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Vendas />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/clientes" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Clientes />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/fornecedores" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Fornecedores />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/relatorios" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Relatorios />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/configuracoes" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Configuracoes />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
