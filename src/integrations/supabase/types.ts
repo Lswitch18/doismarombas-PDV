@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      caixas: {
+        Row: {
+          created_at: string | null
+          data_abertura: string
+          data_fechamento: string | null
+          id: string
+          lucro_total: number | null
+          observacoes: string | null
+          status: string
+          total_credito: number | null
+          total_debito: number | null
+          total_dinheiro: number | null
+          total_pix: number | null
+          total_vendas: number | null
+          updated_at: string | null
+          valor_final: number | null
+          valor_inicial: number
+        }
+        Insert: {
+          created_at?: string | null
+          data_abertura?: string
+          data_fechamento?: string | null
+          id?: string
+          lucro_total?: number | null
+          observacoes?: string | null
+          status?: string
+          total_credito?: number | null
+          total_debito?: number | null
+          total_dinheiro?: number | null
+          total_pix?: number | null
+          total_vendas?: number | null
+          updated_at?: string | null
+          valor_final?: number | null
+          valor_inicial?: number
+        }
+        Update: {
+          created_at?: string | null
+          data_abertura?: string
+          data_fechamento?: string | null
+          id?: string
+          lucro_total?: number | null
+          observacoes?: string | null
+          status?: string
+          total_credito?: number | null
+          total_debito?: number | null
+          total_dinheiro?: number | null
+          total_pix?: number | null
+          total_vendas?: number | null
+          updated_at?: string | null
+          valor_final?: number | null
+          valor_inicial?: number
+        }
+        Relationships: []
+      }
       clientes: {
         Row: {
           cep: string | null
@@ -335,6 +389,7 @@ export type Database = {
       }
       vendas: {
         Row: {
+          caixa_id: string | null
           cliente_id: string | null
           created_at: string | null
           desconto: number | null
@@ -348,6 +403,7 @@ export type Database = {
           valor_recebido: number | null
         }
         Insert: {
+          caixa_id?: string | null
           cliente_id?: string | null
           created_at?: string | null
           desconto?: number | null
@@ -361,6 +417,7 @@ export type Database = {
           valor_recebido?: number | null
         }
         Update: {
+          caixa_id?: string | null
           cliente_id?: string | null
           created_at?: string | null
           desconto?: number | null
@@ -374,6 +431,13 @@ export type Database = {
           valor_recebido?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "vendas_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vendas_cliente_id_fkey"
             columns: ["cliente_id"]

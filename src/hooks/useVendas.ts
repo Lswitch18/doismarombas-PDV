@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 export interface Venda {
   id: string;
   cliente_id?: string;
+  caixa_id?: string;
   total: number;
   lucro_total: number;
   desconto: number;

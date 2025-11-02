@@ -6,10 +6,14 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Wallet, ShoppingCart, Trash2, Plus, Minus, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Wallet, ShoppingCart, Trash2, Plus, Minus, Search, DoorOpen, DoorClosed } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useProdutos } from "@/hooks/useProdutos";
 import { useVendas } from "@/hooks/useVendas";
+import { useCaixas } from "@/hooks/useCaixas";
+import { AbrirCaixaModal } from "@/components/Caixa/AbrirCaixaModal";
+import { FecharCaixaModal } from "@/components/Caixa/FecharCaixaModal";
 
 interface CartItem {
   id: string;
@@ -24,8 +28,11 @@ export default function Caixa() {
   const [receivedAmount, setReceivedAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("dinheiro");
   const [searchTerm, setSearchTerm] = useState("");
+  const [modalAbrirCaixa, setModalAbrirCaixa] = useState(false);
+  const [modalFecharCaixa, setModalFecharCaixa] = useState(false);
   const { produtos, isLoading } = useProdutos();
   const { criarVenda } = useVendas();
+  const { caixaAberto, abrirCaixa, fecharCaixa, isLoading: isLoadingCaixa } = useCaixas();
 
   const filteredProducts = produtos?.filter(p => 
     p.ativo && (
@@ -98,6 +105,15 @@ export default function Caixa() {
   const change = receivedAmount ? parseFloat(receivedAmount) - total : 0;
 
   const finalizeSale = async () => {
+    if (!caixaAberto) {
+      toast({
+        title: "Caixa fechado",
+        description: "Abra o caixa antes de realizar vendas",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (cart.length === 0) {
       toast({
         title: "Carrinho vazio",
@@ -126,12 +142,13 @@ export default function Caixa() {
     await criarVenda.mutateAsync({
       venda: {
         total,
-        lucro_total: 0, // Será calculado automaticamente pelos triggers
+        lucro_total: 0,
         desconto: 0,
         valor_recebido: parseFloat(receivedAmount),
         troco: change,
         forma_pagamento: paymentMethod,
-        status: "concluida"
+        status: "concluida",
+        caixa_id: caixaAberto.id
       },
       itens
     });
@@ -139,6 +156,20 @@ export default function Caixa() {
     setCart([]);
     setReceivedAmount("");
     setSearchTerm("");
+  };
+
+  const handleAbrirCaixa = async (valorInicial: number, observacoes?: string) => {
+    await abrirCaixa.mutateAsync({ valor_inicial: valorInicial, observacoes });
+    setModalAbrirCaixa(false);
+  };
+
+  const handleFecharCaixa = async (observacoes?: string) => {
+    if (caixaAberto) {
+      await fecharCaixa.mutateAsync({ caixaId: caixaAberto.id, observacoes });
+      setModalFecharCaixa(false);
+      setCart([]);
+      setReceivedAmount("");
+    }
   };
 
   const clearCart = () => {
@@ -153,7 +184,53 @@ export default function Caixa() {
           <h1 className="text-3xl font-bold tracking-tight">Caixa</h1>
           <p className="text-muted-foreground">Sistema de vendas e pagamentos</p>
         </div>
+        <div className="flex items-center gap-3">
+          {isLoadingCaixa ? (
+            <Badge variant="outline">Carregando...</Badge>
+          ) : caixaAberto ? (
+            <>
+              <Badge className="bg-green-500 hover:bg-green-600">
+                <DoorOpen className="h-3 w-3 mr-1" />
+                Caixa Aberto
+              </Badge>
+              <Button onClick={() => setModalFecharCaixa(true)} variant="destructive">
+                <DoorClosed className="h-4 w-4 mr-2" />
+                Fechar Caixa
+              </Button>
+            </>
+          ) : (
+            <>
+              <Badge variant="destructive">
+                <DoorClosed className="h-3 w-3 mr-1" />
+                Caixa Fechado
+              </Badge>
+              <Button onClick={() => setModalAbrirCaixa(true)}>
+                <DoorOpen className="h-4 w-4 mr-2" />
+                Abrir Caixa
+              </Button>
+            </>
+          )}
+        </div>
       </div>
+
+      {caixaAberto && (
+        <Card className="border-green-500 bg-green-500/10">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Valor Inicial</p>
+                <p className="text-2xl font-bold">R$ {Number(caixaAberto.valor_inicial).toFixed(2)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Aberto em</p>
+                <p className="font-semibold">
+                  {new Date(caixaAberto.data_abertura).toLocaleString("pt-BR")}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
@@ -359,6 +436,24 @@ export default function Caixa() {
           )}
         </div>
       </div>
+
+      <AbrirCaixaModal
+        open={modalAbrirCaixa}
+        onOpenChange={setModalAbrirCaixa}
+        onConfirm={handleAbrirCaixa}
+        isPending={abrirCaixa.isPending}
+      />
+
+      {caixaAberto && (
+        <FecharCaixaModal
+          open={modalFecharCaixa}
+          onOpenChange={setModalFecharCaixa}
+          onConfirm={handleFecharCaixa}
+          isPending={fecharCaixa.isPending}
+          caixaId={caixaAberto.id}
+          valorInicial={Number(caixaAberto.valor_inicial)}
+        />
+      )}
     </div>
   );
 }
