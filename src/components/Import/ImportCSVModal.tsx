@@ -7,11 +7,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Upload, AlertCircle, CheckCircle, Download, FileText } from "lucide-react";
+import { Upload, AlertCircle, CheckCircle, Download, FileText, Trash2 } from "lucide-react";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface ImportCSVModalProps {
   open: boolean;
@@ -47,6 +48,7 @@ export function ImportCSVModal({ open, onOpenChange, tipo }: ImportCSVModalProps
   const [erros, setErros] = useState<string[]>([]);
   const [logs, setLogs] = useState<LogValidacao[]>([]);
   const [isImporting, setIsImporting] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   const colunas = tipo === 'produtos' ? colunasProdutos : colunasClientes;
 
@@ -336,6 +338,36 @@ export function ImportCSVModal({ open, onOpenChange, tipo }: ImportCSVModalProps
     }
   };
 
+  const limparDados = async () => {
+    setIsClearing(true);
+
+    try {
+      const tabela = tipo === 'produtos' ? 'produtos' : 'clientes';
+      
+      const { error } = await supabase
+        .from(tabela)
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Deleta todos os registros
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: [tipo] });
+      
+      toast({
+        title: "Dados limpos com sucesso",
+        description: `Todos os ${tipo} foram removidos do banco de dados`
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao limpar dados",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   const handleClose = () => {
     setFile(null);
     setDados([]);
@@ -358,7 +390,36 @@ export function ImportCSVModal({ open, onOpenChange, tipo }: ImportCSVModalProps
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex justify-end mb-2">
+        <div className="flex justify-between mb-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                className="gap-2"
+                disabled={isClearing || isImporting}
+              >
+                <Trash2 className="h-4 w-4" />
+                Limpar Todos os Dados
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar limpeza de dados</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação irá deletar TODOS os {tipo} cadastrados no banco de dados. 
+                  Esta operação não pode ser desfeita. Tem certeza que deseja continuar?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={limparDados} className="bg-destructive hover:bg-destructive/90">
+                  {isClearing ? "Limpando..." : "Sim, limpar tudo"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           <Button 
             variant="outline" 
             size="sm"
