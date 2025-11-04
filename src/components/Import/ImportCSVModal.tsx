@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, AlertCircle, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Upload, AlertCircle, CheckCircle, Download, FileText } from "lucide-react";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +21,12 @@ interface ImportCSVModalProps {
 
 interface CSVRow {
   [key: string]: string;
+}
+
+interface LogValidacao {
+  linha: number;
+  status: 'sucesso' | 'erro' | 'aviso';
+  mensagem: string;
 }
 
 const colunasProdutos = {
@@ -38,9 +45,40 @@ export function ImportCSVModal({ open, onOpenChange, tipo }: ImportCSVModalProps
   const [file, setFile] = useState<File | null>(null);
   const [dados, setDados] = useState<CSVRow[]>([]);
   const [erros, setErros] = useState<string[]>([]);
+  const [logs, setLogs] = useState<LogValidacao[]>([]);
   const [isImporting, setIsImporting] = useState(false);
 
   const colunas = tipo === 'produtos' ? colunasProdutos : colunasClientes;
+
+  const downloadTemplate = () => {
+    const todasColunas = [...colunas.obrigatorias, ...colunas.opcionais];
+    const header = todasColunas.join(',');
+    
+    // Criar linha de exemplo
+    let exemploLinha = '';
+    if (tipo === 'produtos') {
+      exemploLinha = 'Produto Exemplo,100.00,50.00,10,7891234567890,Marca X,Categoria Y,Descrição do produto,5';
+    } else {
+      exemploLinha = 'Cliente Exemplo,email@exemplo.com,(11) 99999-9999,123.456.789-00,Rua Exemplo 123,São Paulo,SP,01234-567,Observações';
+    }
+    
+    const csvContent = `${header}\n${exemploLinha}`;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `template_${tipo}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Template baixado",
+      description: "Use este arquivo como modelo para importação"
+    });
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -66,6 +104,14 @@ export function ImportCSVModal({ open, onOpenChange, tipo }: ImportCSVModalProps
       complete: (results) => {
         const dadosProcessados = results.data as CSVRow[];
         const errosEncontrados: string[] = [];
+        const logsValidacao: LogValidacao[] = [];
+
+        // Log inicial
+        logsValidacao.push({
+          linha: 0,
+          status: 'sucesso',
+          mensagem: `Arquivo lido com sucesso. Total de ${dadosProcessados.length} linha(s) encontrada(s).`
+        });
 
         // Validar colunas obrigatórias
         if (dadosProcessados.length > 0) {
@@ -73,34 +119,138 @@ export function ImportCSVModal({ open, onOpenChange, tipo }: ImportCSVModalProps
           const faltando = colunas.obrigatorias.filter(col => !colunasCsv.includes(col));
           
           if (faltando.length > 0) {
-            errosEncontrados.push(`Colunas obrigatórias faltando: ${faltando.join(', ')}`);
+            const erro = `Colunas obrigatórias faltando: ${faltando.join(', ')}`;
+            errosEncontrados.push(erro);
+            logsValidacao.push({
+              linha: 0,
+              status: 'erro',
+              mensagem: erro
+            });
+          } else {
+            logsValidacao.push({
+              linha: 0,
+              status: 'sucesso',
+              mensagem: 'Todas as colunas obrigatórias presentes.'
+            });
           }
+
+          // Log das colunas encontradas
+          logsValidacao.push({
+            linha: 0,
+            status: 'sucesso',
+            mensagem: `Colunas encontradas: ${colunasCsv.join(', ')}`
+          });
         }
 
-        // Validar dados
+        // Validar cada linha
         dadosProcessados.forEach((row, index) => {
+          const numLinha = index + 2; // +2 porque linha 1 é cabeçalho
+          let errosLinha = 0;
+
+          // Validar campos obrigatórios
           colunas.obrigatorias.forEach(col => {
             if (!row[col] || row[col].trim() === '') {
-              errosEncontrados.push(`Linha ${index + 2}: ${col} é obrigatório`);
+              const erro = `Linha ${numLinha}: campo "${col}" é obrigatório`;
+              errosEncontrados.push(erro);
+              logsValidacao.push({
+                linha: numLinha,
+                status: 'erro',
+                mensagem: erro
+              });
+              errosLinha++;
             }
           });
 
           // Validações específicas para produtos
           if (tipo === 'produtos') {
             if (row.preco && isNaN(Number(row.preco))) {
-              errosEncontrados.push(`Linha ${index + 2}: preço deve ser um número`);
+              const erro = `Linha ${numLinha}: "preco" deve ser um número válido (valor: ${row.preco})`;
+              errosEncontrados.push(erro);
+              logsValidacao.push({
+                linha: numLinha,
+                status: 'erro',
+                mensagem: erro
+              });
+              errosLinha++;
             }
             if (row.preco_aquisicao && isNaN(Number(row.preco_aquisicao))) {
-              errosEncontrados.push(`Linha ${index + 2}: preco_aquisicao deve ser um número`);
+              const erro = `Linha ${numLinha}: "preco_aquisicao" deve ser um número válido (valor: ${row.preco_aquisicao})`;
+              errosEncontrados.push(erro);
+              logsValidacao.push({
+                linha: numLinha,
+                status: 'erro',
+                mensagem: erro
+              });
+              errosLinha++;
             }
             if (row.estoque && isNaN(Number(row.estoque))) {
-              errosEncontrados.push(`Linha ${index + 2}: estoque deve ser um número`);
+              const erro = `Linha ${numLinha}: "estoque" deve ser um número válido (valor: ${row.estoque})`;
+              errosEncontrados.push(erro);
+              logsValidacao.push({
+                linha: numLinha,
+                status: 'erro',
+                mensagem: erro
+              });
+              errosLinha++;
             }
+            
+            // Avisos
+            if (row.estoque_minimo && isNaN(Number(row.estoque_minimo))) {
+              logsValidacao.push({
+                linha: numLinha,
+                status: 'aviso',
+                mensagem: `"estoque_minimo" inválido, será usado valor padrão (5)`
+              });
+            }
+            
+            if (row.preco && row.preco_aquisicao && Number(row.preco) < Number(row.preco_aquisicao)) {
+              logsValidacao.push({
+                linha: numLinha,
+                status: 'aviso',
+                mensagem: 'Preço de venda menor que preço de aquisição (margem negativa)'
+              });
+            }
+          }
+
+          // Validações específicas para clientes
+          if (tipo === 'clientes') {
+            if (row.email && !row.email.includes('@')) {
+              logsValidacao.push({
+                linha: numLinha,
+                status: 'aviso',
+                mensagem: 'Email pode estar em formato inválido'
+              });
+            }
+          }
+
+          // Log de sucesso se não houver erros na linha
+          if (errosLinha === 0) {
+            logsValidacao.push({
+              linha: numLinha,
+              status: 'sucesso',
+              mensagem: `Linha validada com sucesso`
+            });
           }
         });
 
+        // Log final
+        if (errosEncontrados.length === 0) {
+          logsValidacao.push({
+            linha: 0,
+            status: 'sucesso',
+            mensagem: `✓ Validação concluída! ${dadosProcessados.length} registro(s) pronto(s) para importação.`
+          });
+        } else {
+          logsValidacao.push({
+            linha: 0,
+            status: 'erro',
+            mensagem: `✗ Validação concluída com ${errosEncontrados.length} erro(s). Corrija antes de importar.`
+          });
+        }
+
         setDados(dadosProcessados);
         setErros(errosEncontrados);
+        setLogs(logsValidacao);
       },
       error: (error) => {
         toast({
@@ -108,6 +258,11 @@ export function ImportCSVModal({ open, onOpenChange, tipo }: ImportCSVModalProps
           description: error.message,
           variant: "destructive"
         });
+        setLogs([{
+          linha: 0,
+          status: 'erro',
+          mensagem: `Erro ao ler arquivo: ${error.message}`
+        }]);
       }
     });
   };
@@ -185,6 +340,7 @@ export function ImportCSVModal({ open, onOpenChange, tipo }: ImportCSVModalProps
     setFile(null);
     setDados([]);
     setErros([]);
+    setLogs([]);
     onOpenChange(false);
   };
 
@@ -201,6 +357,18 @@ export function ImportCSVModal({ open, onOpenChange, tipo }: ImportCSVModalProps
             }
           </DialogDescription>
         </DialogHeader>
+        
+        <div className="flex justify-end mb-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={downloadTemplate}
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Baixar Template CSV
+          </Button>
+        </div>
         
         <div className="space-y-4 py-4">
           <div className="space-y-2">
@@ -245,6 +413,35 @@ export function ImportCSVModal({ open, onOpenChange, tipo }: ImportCSVModalProps
                 {dados.length} {tipo === 'produtos' ? 'produto(s)' : 'cliente(s)'} prontos para importação
               </AlertDescription>
             </Alert>
+          )}
+
+          {logs.length > 0 && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Log de Validação
+              </Label>
+              <ScrollArea className="h-[200px] w-full border rounded-md p-3 bg-muted/30">
+                <div className="space-y-1.5 font-mono text-xs">
+                  {logs.map((log, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <Badge 
+                        variant={log.status === 'erro' ? 'destructive' : log.status === 'aviso' ? 'outline' : 'default'}
+                        className="shrink-0 min-w-[60px] justify-center"
+                      >
+                        {log.status === 'erro' ? 'ERRO' : log.status === 'aviso' ? 'AVISO' : 'OK'}
+                      </Badge>
+                      <span className="text-muted-foreground">
+                        {log.linha > 0 && `[L${log.linha}]`}
+                      </span>
+                      <span className={log.status === 'erro' ? 'text-destructive' : log.status === 'aviso' ? 'text-orange-500' : ''}>
+                        {log.mensagem}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
           )}
 
           {dados.length > 0 && (
