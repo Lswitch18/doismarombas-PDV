@@ -287,11 +287,11 @@ export function ImportCSVModal({ open, onOpenChange, tipo }: ImportCSVModalProps
           preco: Number(row.preco),
           preco_aquisicao: Number(row.preco_aquisicao),
           estoque: Number(row.estoque),
-          codigo_barras: row.codigo_barras || null,
-          marca: row.marca || null,
-          categoria: row.categoria || null,
-          descricao: row.descricao || null,
-          estoque_minimo: row.estoque_minimo ? Number(row.estoque_minimo) : 5,
+          codigo_barras: row.codigo_barras?.trim() || null,
+          marca: row.marca?.trim() || null,
+          categoria: row.categoria?.trim() || null,
+          descricao: row.descricao?.trim() || null,
+          estoque_minimo: row.estoque_minimo && row.estoque_minimo.trim() !== '' ? Number(row.estoque_minimo) : 5,
           ativo: true
         }));
 
