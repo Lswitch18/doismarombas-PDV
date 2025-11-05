@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { StatCard } from "@/components/Dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Wallet, TrendingUp, Package, ShoppingCart, DollarSign, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Wallet, TrendingUp, Package, ShoppingCart, DollarSign, AlertTriangle, RotateCcw } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -16,7 +17,9 @@ import {
 import { useVendas } from "@/hooks/useVendas";
 import { useProdutos } from "@/hooks/useProdutos";
 import { useLucros } from "@/hooks/useLucros";
+import { useZerarContador } from "@/hooks/useZerarContador";
 import { VendasDetalhesModal } from "@/components/Dashboard/VendasDetalhesModal";
+import { ZerarContadorModal } from "@/components/Dashboard/ZerarContadorModal";
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, subDays, format as formatDate } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -27,10 +30,12 @@ export default function Dashboard() {
   const { vendas } = useVendas();
   const { produtos } = useProdutos();
   const { lucroDia, lucroMes, lucroAno } = useLucros();
+  const { zerarContador, isPending } = useZerarContador();
   
   const [modalAberto, setModalAberto] = useState<string | null>(null);
   const [vendasModal, setVendasModal] = useState<any[]>([]);
   const [tituloModal, setTituloModal] = useState("");
+  const [zerarModalAberto, setZerarModalAberto] = useState(false);
   const [topProducts, setTopProducts] = useState<{ name: string; vendas: number }[]>([]);
   const [salesData, setSalesData] = useState<{ name: string; vendas: number }[]>([]);
 
@@ -154,6 +159,15 @@ export default function Dashboard() {
     setModalAberto(tipo);
   };
 
+  const handleZerarContador = (opcoes: {
+    zerarLucros: boolean;
+    zerarVendas: boolean;
+    zerarCaixas: boolean;
+  }) => {
+    zerarContador(opcoes);
+    setZerarModalAberto(false);
+  };
+
   return (
     <div className="p-6 space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -161,6 +175,15 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">Visão geral do seu negócio</p>
         </div>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => setZerarModalAberto(true)}
+          className="gap-2"
+        >
+          <RotateCcw className="h-4 w-4" />
+          Zerar Contador
+        </Button>
       </div>
 
       {/* Cards de Estatísticas - Clicáveis */}
@@ -369,6 +392,14 @@ export default function Dashboard() {
         onOpenChange={(open) => !open && setModalAberto(null)}
         vendas={vendasModal}
         titulo={tituloModal}
+      />
+
+      {/* Modal de Zerar Contador */}
+      <ZerarContadorModal
+        open={zerarModalAberto}
+        onOpenChange={setZerarModalAberto}
+        onConfirm={handleZerarContador}
+        isPending={isPending}
       />
     </div>
   );
