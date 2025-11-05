@@ -1,10 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { startOfDay, endOfDay } from "date-fns";
 
 interface ZerarContadorOpcoes {
   zerarLucros: boolean;
   zerarVendas: boolean;
+  zerarVendasDia: boolean;
   zerarCaixas: boolean;
 }
 
@@ -54,7 +56,25 @@ export function useZerarContador() {
         }
       }
 
-      // 2. Excluir vendas (e automaticamente seus itens por CASCADE)
+      // 2. Excluir vendas do dia
+      if (opcoes.zerarVendasDia) {
+        const hoje = new Date();
+        const inicioHoje = startOfDay(hoje).toISOString();
+        const fimHoje = endOfDay(hoje).toISOString();
+
+        const { error: vendasDiaError } = await supabase
+          .from("vendas")
+          .delete()
+          .gte("created_at", inicioHoje)
+          .lte("created_at", fimHoje);
+
+        if (vendasDiaError) {
+          erros.push("Erro ao excluir vendas do dia");
+          console.error(vendasDiaError);
+        }
+      }
+
+      // 3. Excluir todas as vendas (e automaticamente seus itens por CASCADE)
       if (opcoes.zerarVendas) {
         const { error: vendasError } = await supabase
           .from("vendas")
@@ -67,7 +87,7 @@ export function useZerarContador() {
         }
       }
 
-      // 3. Excluir caixas
+      // 4. Excluir caixas
       if (opcoes.zerarCaixas) {
         const { error: caixasError } = await supabase
           .from("caixas")
@@ -97,7 +117,8 @@ export function useZerarContador() {
       const acoes = [];
       
       if (opcoes.zerarLucros) acoes.push("lucros");
-      if (opcoes.zerarVendas) acoes.push("vendas");
+      if (opcoes.zerarVendasDia) acoes.push("vendas do dia");
+      if (opcoes.zerarVendas) acoes.push("todas as vendas");
       if (opcoes.zerarCaixas) acoes.push("caixas");
       
       if (acoes.length > 0) {

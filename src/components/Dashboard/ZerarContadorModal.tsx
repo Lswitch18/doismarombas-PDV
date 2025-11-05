@@ -18,6 +18,7 @@ interface ZerarContadorModalProps {
   onConfirm: (opcoes: {
     zerarLucros: boolean;
     zerarVendas: boolean;
+    zerarVendasDia: boolean;
     zerarCaixas: boolean;
   }) => void;
   isPending?: boolean;
@@ -31,13 +32,15 @@ export function ZerarContadorModal({
 }: ZerarContadorModalProps) {
   const [zerarLucros, setZerarLucros] = useState(true);
   const [zerarVendas, setZerarVendas] = useState(false);
+  const [zerarVendasDia, setZerarVendasDia] = useState(false);
   const [zerarCaixas, setZerarCaixas] = useState(false);
 
   const handleConfirm = () => {
-    onConfirm({ zerarLucros, zerarVendas, zerarCaixas });
+    onConfirm({ zerarLucros, zerarVendas, zerarVendasDia, zerarCaixas });
     // Reset para valores padrão
     setZerarLucros(true);
     setZerarVendas(false);
+    setZerarVendasDia(false);
     setZerarCaixas(false);
   };
 
@@ -70,6 +73,20 @@ export function ZerarContadorModal({
 
               <div className="flex items-center space-x-3">
                 <Checkbox
+                  id="vendas-dia"
+                  checked={zerarVendasDia}
+                  onCheckedChange={(checked) => setZerarVendasDia(checked as boolean)}
+                />
+                <Label
+                  htmlFor="vendas-dia"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Excluir apenas as vendas do dia de hoje
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <Checkbox
                   id="vendas"
                   checked={zerarVendas}
                   onCheckedChange={(checked) => setZerarVendas(checked as boolean)}
@@ -97,7 +114,7 @@ export function ZerarContadorModal({
               </div>
             </div>
 
-            {!zerarLucros && !zerarVendas && !zerarCaixas && (
+            {!zerarLucros && !zerarVendas && !zerarVendasDia && !zerarCaixas && (
               <p className="text-sm text-muted-foreground italic">
                 Selecione pelo menos uma opção para continuar.
               </p>
@@ -108,7 +125,7 @@ export function ZerarContadorModal({
           <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            disabled={isPending || (!zerarLucros && !zerarVendas && !zerarCaixas)}
+            disabled={isPending || (!zerarLucros && !zerarVendas && !zerarVendasDia && !zerarCaixas)}
             className="bg-destructive hover:bg-destructive/90"
           >
             {isPending ? "Processando..." : "Confirmar e Zerar"}

@@ -162,6 +162,7 @@ export default function Dashboard() {
   const handleZerarContador = (opcoes: {
     zerarLucros: boolean;
     zerarVendas: boolean;
+    zerarVendasDia: boolean;
     zerarCaixas: boolean;
   }) => {
     zerarContador(opcoes);
