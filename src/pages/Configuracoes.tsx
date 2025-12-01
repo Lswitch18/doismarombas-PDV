@@ -8,6 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { Settings, Store, Bell, Database, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { AlterarSenhaModal } from "@/components/Configuracoes/AlterarSenhaModal";
+import { BackupDadosModal } from "@/components/Configuracoes/BackupDadosModal";
 
 export default function Configuracoes() {
   const [loading, setLoading] = useState(true);
@@ -17,6 +19,9 @@ export default function Configuracoes() {
   const [telefone, setTelefone] = useState("(11) 98765-4321");
   const [notificacoesEmail, setNotificacoesEmail] = useState(true);
   const [notificacoesEstoque, setNotificacoesEstoque] = useState(true);
+  
+  const [modalSenhaAberto, setModalSenhaAberto] = useState(false);
+  const [modalBackupAberto, setModalBackupAberto] = useState(false);
 
   useEffect(() => {
     carregarConfiguracoes();
@@ -199,11 +204,19 @@ export default function Configuracoes() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button variant="outline" className="w-full justify-start">
+          <Button 
+            variant="outline" 
+            className="w-full justify-start"
+            onClick={() => setModalSenhaAberto(true)}
+          >
             <Shield className="h-4 w-4 mr-2" />
             Alterar Senha
           </Button>
-          <Button variant="outline" className="w-full justify-start">
+          <Button 
+            variant="outline" 
+            className="w-full justify-start"
+            onClick={() => setModalBackupAberto(true)}
+          >
             <Database className="h-4 w-4 mr-2" />
             Fazer Backup dos Dados
           </Button>
@@ -218,6 +231,16 @@ export default function Configuracoes() {
           Salvar Configurações
         </Button>
       </div>
+
+      {/* Modais */}
+      <AlterarSenhaModal 
+        open={modalSenhaAberto} 
+        onOpenChange={setModalSenhaAberto} 
+      />
+      <BackupDadosModal 
+        open={modalBackupAberto} 
+        onOpenChange={setModalBackupAberto} 
+      />
     </div>
   );
 }
