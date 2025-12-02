@@ -200,6 +200,30 @@ export type Database = {
         }
         Relationships: []
       }
+      health_checks: {
+        Row: {
+          checked_at: string
+          details: Json | null
+          id: string
+          response_time_ms: number | null
+          status: string
+        }
+        Insert: {
+          checked_at?: string
+          details?: Json | null
+          id?: string
+          response_time_ms?: number | null
+          status?: string
+        }
+        Update: {
+          checked_at?: string
+          details?: Json | null
+          id?: string
+          response_time_ms?: number | null
+          status?: string
+        }
+        Relationships: []
+      }
       itens_venda: {
         Row: {
           created_at: string | null
