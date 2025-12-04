@@ -23,12 +23,15 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ImportCSVModal } from "@/components/Import/ImportCSVModal";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Estoque() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     nome: "",
     preco: "",
@@ -40,6 +43,7 @@ export default function Estoque() {
     marca: "",
   });
 
+  const { toast } = useToast();
   const { produtos, isLoading, addProduto, updateProduto, deleteProduto } = useProdutos();
 
   const filteredProducts = produtos?.filter(p => 
@@ -47,6 +51,46 @@ export default function Estoque() {
     p.codigo_barras?.includes(searchTerm) ||
     p.marca?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const allSelected = filteredProducts && filteredProducts.length > 0 && 
+    filteredProducts.every(p => selectedProducts.includes(p.id));
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked && filteredProducts) {
+      setSelectedProducts(filteredProducts.map(p => p.id));
+    } else {
+      setSelectedProducts([]);
+    }
+  };
+
+  const handleSelectProduct = (productId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedProducts(prev => [...prev, productId]);
+    } else {
+      setSelectedProducts(prev => prev.filter(id => id !== productId));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedProducts.length === 0) return;
+    
+    if (confirm(`Tem certeza que deseja excluir ${selectedProducts.length} produto(s)?`)) {
+      try {
+        for (const id of selectedProducts) {
+          await deleteProduto.mutateAsync(id);
+        }
+        setSelectedProducts([]);
+        toast({
+          title: `${selectedProducts.length} produto(s) excluído(s) com sucesso!`,
+        });
+      } catch (error) {
+        toast({
+          title: "Erro ao excluir produtos",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,6 +276,16 @@ export default function Estoque() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            {selectedProducts.length > 0 && (
+              <Button 
+                variant="destructive" 
+                className="gap-2"
+                onClick={handleDeleteSelected}
+              >
+                <Trash2 className="h-4 w-4" />
+                Excluir ({selectedProducts.length})
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -243,6 +297,12 @@ export default function Estoque() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead>Produto</TableHead>
                   <TableHead>Marca</TableHead>
                   <TableHead>Preço Venda</TableHead>
@@ -259,7 +319,13 @@ export default function Estoque() {
                     : 0;
                   
                   return (
-                    <TableRow key={product.id}>
+                    <TableRow key={product.id} className={selectedProducts.includes(product.id) ? "bg-muted/50" : ""}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedProducts.includes(product.id)}
+                          onCheckedChange={(checked) => handleSelectProduct(product.id, !!checked)}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{product.nome}</TableCell>
                       <TableCell>{product.marca || "-"}</TableCell>
                       <TableCell>R$ {product.preco.toFixed(2)}</TableCell>
