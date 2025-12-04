@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { StatCard } from "@/components/Dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wallet, TrendingUp, Package, ShoppingCart, DollarSign, AlertTriangle, RotateCcw } from "lucide-react";
+import { Wallet, TrendingUp, Package, ShoppingCart, DollarSign, AlertTriangle, RotateCcw, ArrowUpCircle, ArrowDownCircle, Receipt } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -18,6 +18,7 @@ import { useVendas } from "@/hooks/useVendas";
 import { useProdutos } from "@/hooks/useProdutos";
 import { useLucros } from "@/hooks/useLucros";
 import { useZerarContador } from "@/hooks/useZerarContador";
+import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 import { VendasDetalhesModal } from "@/components/Dashboard/VendasDetalhesModal";
 import { ZerarContadorModal } from "@/components/Dashboard/ZerarContadorModal";
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, subDays, format as formatDate } from "date-fns";
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const { produtos } = useProdutos();
   const { lucroDia, lucroMes, lucroAno } = useLucros();
   const { zerarContador, isPending } = useZerarContador();
+  const { todasMovimentacoes } = useMovimentacoesCaixa();
   
   const [modalAberto, setModalAberto] = useState<string | null>(null);
   const [vendasModal, setVendasModal] = useState<any[]>([]);
@@ -344,11 +346,11 @@ export default function Dashboard() {
 
         <Card className="animate-fade-up" style={{ animationDelay: "0.4s" }}>
           <CardHeader>
-            <CardTitle>Últimas Movimentações</CardTitle>
+            <CardTitle>Últimas Vendas</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {vendas?.slice(0, 5).map((venda) => {
+              {vendas?.slice(0, 4).map((venda) => {
                 const dataVenda = new Date(venda.created_at);
                 const isHoje = dataVenda.toDateString() === new Date().toDateString();
                 
@@ -379,13 +381,60 @@ export default function Dashboard() {
               })}
               {(!vendas || vendas.length === 0) && (
                 <div className="text-center py-8 text-muted-foreground">
-                  <p>Nenhuma movimentação registrada</p>
+                  <p>Nenhuma venda registrada</p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Movimentações de Caixa */}
+      <Card className="animate-fade-up" style={{ animationDelay: "0.5s" }}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Receipt className="h-5 w-5" />
+            Movimentações de Caixa (Entradas/Saídas)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {todasMovimentacoes?.slice(0, 6).map((mov: any) => {
+              const dataMov = new Date(mov.created_at);
+              const isHoje = dataMov.toDateString() === new Date().toDateString();
+              
+              return (
+                <div
+                  key={mov.id}
+                  className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted/70 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    {mov.tipo === 'entrada' ? (
+                      <ArrowUpCircle className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <ArrowDownCircle className="h-5 w-5 text-red-500" />
+                    )}
+                    <div>
+                      <p className="font-medium">{mov.descricao}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {isHoje ? 'Hoje' : formatDate(dataMov, "dd/MM/yyyy", { locale: ptBR })} às {formatDate(dataMov, "HH:mm", { locale: ptBR })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`font-semibold text-lg ${mov.tipo === 'entrada' ? 'text-green-500' : 'text-red-500'}`}>
+                    {mov.tipo === 'entrada' ? '+' : '-'}R$ {Number(mov.valor).toFixed(2)}
+                  </div>
+                </div>
+              );
+            })}
+            {(!todasMovimentacoes || todasMovimentacoes.length === 0) && (
+              <div className="col-span-full text-center py-8 text-muted-foreground">
+                <p>Nenhuma movimentação de caixa registrada</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Modal de Vendas Detalhadas */}
       <VendasDetalhesModal

@@ -299,6 +299,41 @@ export type Database = {
         }
         Relationships: []
       }
+      movimentacoes_caixa: {
+        Row: {
+          caixa_id: string
+          created_at: string
+          descricao: string
+          id: string
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          caixa_id: string
+          created_at?: string
+          descricao: string
+          id?: string
+          tipo: string
+          valor: number
+        }
+        Update: {
+          caixa_id?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          tipo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentacoes_caixa_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movimentacoes_estoque: {
         Row: {
           created_at: string | null

@@ -7,13 +7,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, ShoppingCart, Trash2, Plus, Minus, Search, DoorOpen, DoorClosed } from "lucide-react";
+import { Wallet, ShoppingCart, Trash2, Plus, Minus, Search, DoorOpen, DoorClosed, ArrowUpCircle, ArrowDownCircle, Receipt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useProdutos } from "@/hooks/useProdutos";
 import { useVendas } from "@/hooks/useVendas";
 import { useCaixas } from "@/hooks/useCaixas";
+import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 import { AbrirCaixaModal } from "@/components/Caixa/AbrirCaixaModal";
 import { FecharCaixaModal } from "@/components/Caixa/FecharCaixaModal";
+import { MovimentacaoCaixaModal } from "@/components/Caixa/MovimentacaoCaixaModal";
 
 interface CartItem {
   id: string;
@@ -30,9 +32,11 @@ export default function Caixa() {
   const [searchTerm, setSearchTerm] = useState("");
   const [modalAbrirCaixa, setModalAbrirCaixa] = useState(false);
   const [modalFecharCaixa, setModalFecharCaixa] = useState(false);
+  const [modalMovimentacao, setModalMovimentacao] = useState(false);
   const { produtos, isLoading } = useProdutos();
   const { criarVenda } = useVendas();
   const { caixaAberto, abrirCaixa, fecharCaixa, isLoading: isLoadingCaixa } = useCaixas();
+  const { movimentacoes, adicionarMovimentacao, totalEntradas, totalSaidas } = useMovimentacoesCaixa(caixaAberto?.id);
 
   const filteredProducts = produtos?.filter(p => 
     p.ativo && (
@@ -177,6 +181,17 @@ export default function Caixa() {
     setReceivedAmount("");
   };
 
+  const handleMovimentacao = async (tipo: 'entrada' | 'saida', valor: number, descricao: string) => {
+    if (!caixaAberto) return;
+    await adicionarMovimentacao.mutateAsync({
+      caixa_id: caixaAberto.id,
+      tipo,
+      valor,
+      descricao,
+    });
+    setModalMovimentacao(false);
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -193,6 +208,10 @@ export default function Caixa() {
                 <DoorOpen className="h-3 w-3 mr-1" />
                 Caixa Aberto
               </Badge>
+              <Button onClick={() => setModalMovimentacao(true)} variant="outline">
+                <Receipt className="h-4 w-4 mr-2" />
+                Movimentação
+              </Button>
               <Button onClick={() => setModalFecharCaixa(true)} variant="destructive">
                 <DoorClosed className="h-4 w-4 mr-2" />
                 Fechar Caixa
@@ -214,22 +233,75 @@ export default function Caixa() {
       </div>
 
       {caixaAberto && (
-        <Card className="border-green-500 bg-green-500/10">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Valor Inicial</p>
-                <p className="text-2xl font-bold">R$ {Number(caixaAberto.valor_inicial).toFixed(2)}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="border-green-500 bg-green-500/10">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Valor Inicial</p>
+                  <p className="text-2xl font-bold">R$ {Number(caixaAberto.valor_inicial).toFixed(2)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Aberto em</p>
+                  <p className="font-semibold">
+                    {new Date(caixaAberto.data_abertura).toLocaleString("pt-BR")}
+                  </p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Aberto em</p>
-                <p className="font-semibold">
-                  {new Date(caixaAberto.data_abertura).toLocaleString("pt-BR")}
-                </p>
+              <Separator className="my-3" />
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-xs text-muted-foreground">Entradas</p>
+                  <p className="text-lg font-bold text-green-500">+R$ {totalEntradas.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Saídas</p>
+                  <p className="text-lg font-bold text-red-500">-R$ {totalSaidas.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Saldo Mov.</p>
+                  <p className={`text-lg font-bold ${totalEntradas - totalSaidas >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    R$ {(totalEntradas - totalSaidas).toFixed(2)}
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                Últimas Movimentações
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2">
+              <ScrollArea className="h-[100px]">
+                {movimentacoes && movimentacoes.length > 0 ? (
+                  <div className="space-y-2">
+                    {movimentacoes.slice(0, 5).map((mov) => (
+                      <div key={mov.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          {mov.tipo === 'entrada' ? (
+                            <ArrowUpCircle className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <ArrowDownCircle className="h-4 w-4 text-red-500" />
+                          )}
+                          <span className="truncate max-w-[150px]">{mov.descricao}</span>
+                        </div>
+                        <span className={mov.tipo === 'entrada' ? 'text-green-500' : 'text-red-500'}>
+                          {mov.tipo === 'entrada' ? '+' : '-'}R$ {Number(mov.valor).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm text-center">Nenhuma movimentação</p>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -445,14 +517,22 @@ export default function Caixa() {
       />
 
       {caixaAberto && (
-        <FecharCaixaModal
-          open={modalFecharCaixa}
-          onOpenChange={setModalFecharCaixa}
-          onConfirm={handleFecharCaixa}
-          isPending={fecharCaixa.isPending}
-          caixaId={caixaAberto.id}
-          valorInicial={Number(caixaAberto.valor_inicial)}
-        />
+        <>
+          <FecharCaixaModal
+            open={modalFecharCaixa}
+            onOpenChange={setModalFecharCaixa}
+            onConfirm={handleFecharCaixa}
+            isPending={fecharCaixa.isPending}
+            caixaId={caixaAberto.id}
+            valorInicial={Number(caixaAberto.valor_inicial)}
+          />
+          <MovimentacaoCaixaModal
+            open={modalMovimentacao}
+            onOpenChange={setModalMovimentacao}
+            onConfirm={handleMovimentacao}
+            isPending={adicionarMovimentacao.isPending}
+          />
+        </>
       )}
     </div>
   );
