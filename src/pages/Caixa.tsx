@@ -2,12 +2,10 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, ShoppingCart, Trash2, Plus, Minus, Search, DoorOpen, DoorClosed, ArrowUpCircle, ArrowDownCircle, Receipt } from "lucide-react";
+import { Wallet, ShoppingCart, Trash2, Plus, Minus, Search, DoorOpen, DoorClosed, ArrowUpCircle, ArrowDownCircle, Receipt, Banknote, CreditCard, Smartphone, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useProdutos } from "@/hooks/useProdutos";
 import { useVendas } from "@/hooks/useVendas";
@@ -37,7 +35,7 @@ export default function Caixa() {
   const [modalAbrirCaixa, setModalAbrirCaixa] = useState(false);
   const [modalFecharCaixa, setModalFecharCaixa] = useState(false);
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
-  const [pagamentos, setPagamentos] = useState<Pagamento[]>([{ forma_pagamento: "dinheiro", valor: 0 }]);
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const { produtos, isLoading } = useProdutos();
   const { criarVenda } = useVendas();
   const { caixaAberto, abrirCaixa, fecharCaixa, isLoading: isLoadingCaixa } = useCaixas();
@@ -120,9 +118,7 @@ export default function Caixa() {
   };
 
   const removePagamento = (index: number) => {
-    if (pagamentos.length > 1) {
-      setPagamentos(pagamentos.filter((_, i) => i !== index));
-    }
+    setPagamentos(pagamentos.filter((_, i) => i !== index));
   };
 
   const updatePagamento = (index: number, field: keyof Pagamento, value: string | number) => {
@@ -189,7 +185,7 @@ export default function Caixa() {
     setCart([]);
     setReceivedAmount("");
     setSearchTerm("");
-    setPagamentos([{ forma_pagamento: "dinheiro", valor: 0 }]);
+    setPagamentos([]);
   };
 
   const handleAbrirCaixa = async (valorInicial: number, observacoes?: string) => {
@@ -209,7 +205,7 @@ export default function Caixa() {
   const clearCart = () => {
     setCart([]);
     setReceivedAmount("");
-    setPagamentos([{ forma_pagamento: "dinheiro", valor: 0 }]);
+    setPagamentos([]);
   };
 
   const handleMovimentacao = async (tipo: 'entrada' | 'saida', valor: number, descricao: string) => {
@@ -483,77 +479,105 @@ export default function Caixa() {
 
           {cart.length > 0 && (
             <Card className="border-primary">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center justify-between">
-                  <span>Pagamento</span>
-                  <Button variant="outline" size="sm" onClick={addPagamento}>
-                    <Plus className="h-3 w-3 mr-1" />
-                    Forma
-                  </Button>
-                </CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Formas de Pagamento</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {pagamentos.map((pagamento, index) => (
-                  <div key={index} className="space-y-2 p-3 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs">Forma {index + 1}</Label>
-                      {pagamentos.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => removePagamento(index)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                    <Select 
-                      value={pagamento.forma_pagamento} 
-                      onValueChange={(v) => updatePagamento(index, 'forma_pagamento', v)}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                        <SelectItem value="debito">Cartão de Débito</SelectItem>
-                        <SelectItem value="credito">Cartão de Crédito</SelectItem>
-                        <SelectItem value="pix">PIX</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={pagamento.valor || ""}
-                      onChange={(e) => updatePagamento(index, 'valor', e.target.value)}
-                      className="h-9"
-                    />
-                  </div>
-                ))}
+                {/* Payment Method Cards */}
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'dinheiro', label: 'Dinheiro', icon: Banknote, color: 'bg-green-500' },
+                    { id: 'debito', label: 'Débito', icon: CreditCard, color: 'bg-blue-500' },
+                    { id: 'credito', label: 'Crédito', icon: CreditCard, color: 'bg-purple-500' },
+                    { id: 'pix', label: 'PIX', icon: Smartphone, color: 'bg-teal-500' },
+                  ].map((method) => {
+                    const pagamento = pagamentos.find(p => p.forma_pagamento === method.id);
+                    const isActive = pagamento && pagamento.valor > 0;
+                    const Icon = method.icon;
+                    
+                    return (
+                      <div
+                        key={method.id}
+                        className={`relative rounded-lg border-2 p-3 cursor-pointer transition-all ${
+                          isActive 
+                            ? 'border-primary bg-primary/10 shadow-md' 
+                            : 'border-muted hover:border-primary/50 hover:bg-muted/50'
+                        }`}
+                        onClick={() => {
+                          if (!pagamento) {
+                            setPagamentos([...pagamentos, { forma_pagamento: method.id, valor: valorRestante > 0 ? valorRestante : total }]);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className={`p-1.5 rounded-full ${method.color}`}>
+                            <Icon className="h-4 w-4 text-white" />
+                          </div>
+                          <span className="font-medium text-sm">{method.label}</span>
+                        </div>
+                        
+                        {pagamento ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground">R$</span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={pagamento.valor || ""}
+                              onChange={(e) => {
+                                const index = pagamentos.findIndex(p => p.forma_pagamento === method.id);
+                                if (index !== -1) {
+                                  updatePagamento(index, 'valor', e.target.value);
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="h-8 text-sm font-semibold"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const index = pagamentos.findIndex(p => p.forma_pagamento === method.id);
+                                if (index !== -1) {
+                                  removePagamento(index);
+                                }
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Clique para adicionar</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
 
                 <Separator />
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Total da Venda:</span>
+                {/* Summary */}
+                <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total da Venda:</span>
                     <span className="font-semibold">R$ {total.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Total Recebido:</span>
-                    <span className="font-semibold text-green-500">R$ {totalPagamentos.toFixed(2)}</span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total Recebido:</span>
+                    <span className="font-semibold text-green-600">R$ {totalPagamentos.toFixed(2)}</span>
                   </div>
                   {valorRestante > 0 && (
-                    <div className="flex justify-between text-red-500">
-                      <span>Falta:</span>
-                      <span className="font-semibold">R$ {valorRestante.toFixed(2)}</span>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-red-500">Falta:</span>
+                      <span className="font-bold text-red-500">R$ {valorRestante.toFixed(2)}</span>
                     </div>
                   )}
                   {change > 0 && (
-                    <div className="flex justify-between text-primary">
-                      <span>Troco:</span>
-                      <span className="font-bold text-lg">R$ {change.toFixed(2)}</span>
+                    <div className="flex justify-between pt-2 border-t">
+                      <span className="text-primary font-medium">Troco:</span>
+                      <span className="font-bold text-xl text-primary">R$ {change.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
