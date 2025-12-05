@@ -3,9 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { Plus, Trash2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 
 interface FecharCaixaModalProps {
   open: boolean;
@@ -26,6 +29,12 @@ interface ResumoVendas {
   quantidadeVendas: number;
 }
 
+interface LancamentoManual {
+  tipo: 'entrada' | 'saida';
+  valor: number;
+  descricao: string;
+}
+
 export function FecharCaixaModal({ 
   open, 
   onOpenChange, 
@@ -35,6 +44,8 @@ export function FecharCaixaModal({
   valorInicial 
 }: FecharCaixaModalProps) {
   const [observacoes, setObservacoes] = useState("");
+  const [lancamentos, setLancamentos] = useState<LancamentoManual[]>([]);
+  const [movimentacoes, setMovimentacoes] = useState<any[]>([]);
   const [resumo, setResumo] = useState<ResumoVendas>({
     totalVendas: 0,
     totalDinheiro: 0,
@@ -48,67 +59,154 @@ export function FecharCaixaModal({
   useEffect(() => {
     if (open && caixaId) {
       carregarResumo();
+      carregarMovimentacoes();
     }
   }, [open, caixaId]);
 
+  const carregarMovimentacoes = async () => {
+    const { data } = await supabase
+      .from("movimentacoes_caixa")
+      .select("*")
+      .eq("caixa_id", caixaId)
+      .order("created_at", { ascending: false });
+
+    if (data) {
+      setMovimentacoes(data);
+    }
+  };
+
   const carregarResumo = async () => {
+    // Buscar vendas com pagamentos múltiplos
     const { data: vendas } = await supabase
       .from("vendas")
-      .select("total, lucro_total, forma_pagamento")
+      .select("id, total, lucro_total, forma_pagamento")
       .eq("caixa_id", caixaId)
       .eq("status", "concluida");
 
     if (vendas) {
-      const resumoCalculado = vendas.reduce((acc, venda) => {
-        const total = Number(venda.total);
-        const lucro = Number(venda.lucro_total || 0);
-        
-        acc.totalVendas += total;
-        acc.lucroTotal += lucro;
-        acc.quantidadeVendas += 1;
-        
-        switch (venda.forma_pagamento?.toLowerCase()) {
-          case 'dinheiro':
-            acc.totalDinheiro += total;
-            break;
-          case 'pix':
-            acc.totalPix += total;
-            break;
-          case 'credito':
-          case 'crédito':
-            acc.totalCredito += total;
-            break;
-          case 'debito':
-          case 'débito':
-            acc.totalDebito += total;
-            break;
-        }
-        
-        return acc;
-      }, {
-        totalVendas: 0,
-        totalDinheiro: 0,
-        totalPix: 0,
-        totalCredito: 0,
-        totalDebito: 0,
-        lucroTotal: 0,
-        quantidadeVendas: 0
-      });
+      // Buscar pagamentos detalhados
+      const vendaIds = vendas.map(v => v.id);
+      const { data: pagamentos } = await supabase
+        .from("pagamentos_venda")
+        .select("*")
+        .in("venda_id", vendaIds);
 
-      setResumo(resumoCalculado);
+      let totalDinheiro = 0;
+      let totalPix = 0;
+      let totalCredito = 0;
+      let totalDebito = 0;
+
+      // Se existem pagamentos detalhados, usar esses valores
+      if (pagamentos && pagamentos.length > 0) {
+        pagamentos.forEach(pag => {
+          switch (pag.forma_pagamento?.toLowerCase()) {
+            case 'dinheiro':
+              totalDinheiro += Number(pag.valor);
+              break;
+            case 'pix':
+              totalPix += Number(pag.valor);
+              break;
+            case 'credito':
+            case 'crédito':
+              totalCredito += Number(pag.valor);
+              break;
+            case 'debito':
+            case 'débito':
+              totalDebito += Number(pag.valor);
+              break;
+          }
+        });
+      } else {
+        // Fallback para forma de pagamento única
+        vendas.forEach(venda => {
+          const total = Number(venda.total);
+          switch (venda.forma_pagamento?.toLowerCase()) {
+            case 'dinheiro':
+              totalDinheiro += total;
+              break;
+            case 'pix':
+              totalPix += total;
+              break;
+            case 'credito':
+            case 'crédito':
+              totalCredito += total;
+              break;
+            case 'debito':
+            case 'débito':
+              totalDebito += total;
+              break;
+          }
+        });
+      }
+
+      const totalVendas = vendas.reduce((acc, v) => acc + Number(v.total), 0);
+      const lucroTotal = vendas.reduce((acc, v) => acc + Number(v.lucro_total || 0), 0);
+
+      setResumo({
+        totalVendas,
+        totalDinheiro,
+        totalPix,
+        totalCredito,
+        totalDebito,
+        lucroTotal,
+        quantidadeVendas: vendas.length
+      });
     }
   };
 
-  const handleConfirm = () => {
-    onConfirm(observacoes || undefined);
-    setObservacoes("");
+  const addLancamento = () => {
+    setLancamentos([...lancamentos, { tipo: 'entrada', valor: 0, descricao: '' }]);
   };
 
-  const valorFinalCaixa = valorInicial + resumo.totalDinheiro;
+  const removeLancamento = (index: number) => {
+    setLancamentos(lancamentos.filter((_, i) => i !== index));
+  };
+
+  const updateLancamento = (index: number, field: keyof LancamentoManual, value: any) => {
+    setLancamentos(lancamentos.map((l, i) => 
+      i === index ? { ...l, [field]: field === 'valor' ? Number(value) : value } : l
+    ));
+  };
+
+  const handleConfirm = async () => {
+    // Salvar lançamentos manuais antes de fechar
+    for (const lancamento of lancamentos) {
+      if (lancamento.valor > 0 && lancamento.descricao) {
+        await supabase.from("movimentacoes_caixa").insert({
+          caixa_id: caixaId,
+          tipo: lancamento.tipo,
+          valor: lancamento.valor,
+          descricao: lancamento.descricao
+        });
+      }
+    }
+
+    onConfirm(observacoes || undefined);
+    setObservacoes("");
+    setLancamentos([]);
+  };
+
+  const totalEntradasMov = movimentacoes
+    .filter(m => m.tipo === 'entrada')
+    .reduce((acc, m) => acc + Number(m.valor), 0);
+  
+  const totalSaidasMov = movimentacoes
+    .filter(m => m.tipo === 'saida')
+    .reduce((acc, m) => acc + Number(m.valor), 0);
+
+  const totalEntradasLanc = lancamentos
+    .filter(l => l.tipo === 'entrada')
+    .reduce((acc, l) => acc + l.valor, 0);
+  
+  const totalSaidasLanc = lancamentos
+    .filter(l => l.tipo === 'saida')
+    .reduce((acc, l) => acc + l.valor, 0);
+
+  const valorFinalCaixa = valorInicial + resumo.totalDinheiro + totalEntradasMov - totalSaidasMov + totalEntradasLanc - totalSaidasLanc;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Fechar Caixa</DialogTitle>
           <DialogDescription>
@@ -153,6 +251,32 @@ export function FecharCaixaModal({
                 </div>
                 
                 <Separator />
+
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Movimentações (Entradas):</span>
+                  <span className="text-green-500">+R$ {totalEntradasMov.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Movimentações (Saídas):</span>
+                  <span className="text-red-500">-R$ {totalSaidasMov.toFixed(2)}</span>
+                </div>
+
+                {lancamentos.length > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Lançamentos Manuais (Entradas):</span>
+                      <span className="text-green-500">+R$ {totalEntradasLanc.toFixed(2)}</span>
+                    </div>
+                    
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Lançamentos Manuais (Saídas):</span>
+                      <span className="text-red-500">-R$ {totalSaidasLanc.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+                
+                <Separator />
                 
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Valor Inicial:</span>
@@ -173,6 +297,75 @@ export function FecharCaixaModal({
                   </span>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Lançamentos Manuais */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <Label className="text-base font-semibold">Lançamentos Manuais Faltantes</Label>
+                <Button variant="outline" size="sm" onClick={addLancamento}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Adicionar
+                </Button>
+              </div>
+
+              {lancamentos.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhum lançamento manual. Clique em "Adicionar" para inserir lançamentos faltantes.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {lancamentos.map((lancamento, index) => (
+                    <div key={index} className="flex items-center gap-2 p-3 border rounded-lg">
+                      <Select 
+                        value={lancamento.tipo} 
+                        onValueChange={(v) => updateLancamento(index, 'tipo', v)}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="entrada">
+                            <div className="flex items-center gap-1">
+                              <ArrowUpCircle className="h-3 w-3 text-green-500" />
+                              Entrada
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="saida">
+                            <div className="flex items-center gap-1">
+                              <ArrowDownCircle className="h-3 w-3 text-red-500" />
+                              Saída
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Valor"
+                        value={lancamento.valor || ""}
+                        onChange={(e) => updateLancamento(index, 'valor', e.target.value)}
+                        className="w-28"
+                      />
+                      <Input
+                        placeholder="Descrição"
+                        value={lancamento.descricao}
+                        onChange={(e) => updateLancamento(index, 'descricao', e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeLancamento(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
           

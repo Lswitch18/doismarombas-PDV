@@ -24,15 +24,20 @@ interface CartItem {
   quantidade: number;
 }
 
+interface Pagamento {
+  forma_pagamento: string;
+  valor: number;
+}
+
 export default function Caixa() {
   const { toast } = useToast();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [receivedAmount, setReceivedAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("dinheiro");
   const [searchTerm, setSearchTerm] = useState("");
   const [modalAbrirCaixa, setModalAbrirCaixa] = useState(false);
   const [modalFecharCaixa, setModalFecharCaixa] = useState(false);
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([{ forma_pagamento: "dinheiro", valor: 0 }]);
   const { produtos, isLoading } = useProdutos();
   const { criarVenda } = useVendas();
   const { caixaAberto, abrirCaixa, fecharCaixa, isLoading: isLoadingCaixa } = useCaixas();
@@ -106,7 +111,25 @@ export default function Caixa() {
   };
 
   const total = cart.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
-  const change = receivedAmount ? parseFloat(receivedAmount) - total : 0;
+  const totalPagamentos = pagamentos.reduce((sum, p) => sum + p.valor, 0);
+  const valorRestante = total - totalPagamentos;
+  const change = totalPagamentos > total ? totalPagamentos - total : 0;
+
+  const addPagamento = () => {
+    setPagamentos([...pagamentos, { forma_pagamento: "dinheiro", valor: 0 }]);
+  };
+
+  const removePagamento = (index: number) => {
+    if (pagamentos.length > 1) {
+      setPagamentos(pagamentos.filter((_, i) => i !== index));
+    }
+  };
+
+  const updatePagamento = (index: number, field: keyof Pagamento, value: string | number) => {
+    setPagamentos(pagamentos.map((p, i) => 
+      i === index ? { ...p, [field]: field === 'valor' ? Number(value) : value } : p
+    ));
+  };
 
   const finalizeSale = async () => {
     if (!caixaAberto) {
@@ -127,10 +150,10 @@ export default function Caixa() {
       return;
     }
 
-    if (!receivedAmount || parseFloat(receivedAmount) < total) {
+    if (totalPagamentos < total) {
       toast({
         title: "Valor insuficiente",
-        description: "O valor recebido é menor que o total da compra",
+        description: `Faltam R$ ${valorRestante.toFixed(2)} para completar o pagamento`,
         variant: "destructive",
       });
       return;
@@ -143,23 +166,30 @@ export default function Caixa() {
       subtotal: item.preco * item.quantidade
     }));
 
+    // Forma principal de pagamento é a de maior valor
+    const formaPrincipal = pagamentos.reduce((prev, curr) => 
+      curr.valor > prev.valor ? curr : prev
+    ).forma_pagamento;
+
     await criarVenda.mutateAsync({
       venda: {
         total,
         lucro_total: 0,
         desconto: 0,
-        valor_recebido: parseFloat(receivedAmount),
+        valor_recebido: totalPagamentos,
         troco: change,
-        forma_pagamento: paymentMethod,
+        forma_pagamento: formaPrincipal,
         status: "concluida",
         caixa_id: caixaAberto.id
       },
-      itens
+      itens,
+      pagamentos: pagamentos.filter(p => p.valor > 0)
     });
 
     setCart([]);
     setReceivedAmount("");
     setSearchTerm("");
+    setPagamentos([{ forma_pagamento: "dinheiro", valor: 0 }]);
   };
 
   const handleAbrirCaixa = async (valorInicial: number, observacoes?: string) => {
@@ -179,6 +209,7 @@ export default function Caixa() {
   const clearCart = () => {
     setCart([]);
     setReceivedAmount("");
+    setPagamentos([{ forma_pagamento: "dinheiro", valor: 0 }]);
   };
 
   const handleMovimentacao = async (tipo: 'entrada' | 'saida', valor: number, descricao: string) => {
@@ -453,53 +484,85 @@ export default function Caixa() {
           {cart.length > 0 && (
             <Card className="border-primary">
               <CardHeader>
-                <CardTitle className="text-lg">Pagamento</CardTitle>
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span>Pagamento</span>
+                  <Button variant="outline" size="sm" onClick={addPagamento}>
+                    <Plus className="h-3 w-3 mr-1" />
+                    Forma
+                  </Button>
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Forma de Pagamento</Label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="debito">Cartão de Débito</SelectItem>
-                      <SelectItem value="credito">Cartão de Crédito</SelectItem>
-                      <SelectItem value="pix">PIX</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="received">Valor Recebido</Label>
-                  <Input
-                    id="received"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={receivedAmount}
-                    onChange={(e) => setReceivedAmount(e.target.value)}
-                    className="text-lg"
-                  />
-                </div>
-
-                {receivedAmount && parseFloat(receivedAmount) >= total && (
-                  <div className="bg-primary/10 p-4 rounded-lg border border-primary">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold">Troco:</span>
-                      <span className="text-2xl font-bold text-primary">
-                        R$ {change.toFixed(2)}
-                      </span>
+                {pagamentos.map((pagamento, index) => (
+                  <div key={index} className="space-y-2 p-3 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">Forma {index + 1}</Label>
+                      {pagamentos.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => removePagamento(index)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
+                    <Select 
+                      value={pagamento.forma_pagamento} 
+                      onValueChange={(v) => updatePagamento(index, 'forma_pagamento', v)}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="debito">Cartão de Débito</SelectItem>
+                        <SelectItem value="credito">Cartão de Crédito</SelectItem>
+                        <SelectItem value="pix">PIX</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={pagamento.valor || ""}
+                      onChange={(e) => updatePagamento(index, 'valor', e.target.value)}
+                      className="h-9"
+                    />
                   </div>
-                )}
+                ))}
+
+                <Separator />
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Total da Venda:</span>
+                    <span className="font-semibold">R$ {total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total Recebido:</span>
+                    <span className="font-semibold text-green-500">R$ {totalPagamentos.toFixed(2)}</span>
+                  </div>
+                  {valorRestante > 0 && (
+                    <div className="flex justify-between text-red-500">
+                      <span>Falta:</span>
+                      <span className="font-semibold">R$ {valorRestante.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {change > 0 && (
+                    <div className="flex justify-between text-primary">
+                      <span>Troco:</span>
+                      <span className="font-bold text-lg">R$ {change.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
 
                 <Button
                   className="w-full"
                   size="lg"
                   onClick={finalizeSale}
-                  disabled={cart.length === 0 || criarVenda.isPending}
+                  disabled={cart.length === 0 || criarVenda.isPending || totalPagamentos < total}
                 >
                   {criarVenda.isPending ? "Finalizando..." : "Finalizar Venda"}
                 </Button>
