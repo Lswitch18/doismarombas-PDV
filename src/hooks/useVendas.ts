@@ -24,6 +24,11 @@ export interface ItemVenda {
   subtotal: number;
 }
 
+export interface PagamentoVenda {
+  forma_pagamento: string;
+  valor: number;
+}
+
 export const useVendas = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -44,10 +49,12 @@ export const useVendas = () => {
   const criarVenda = useMutation({
     mutationFn: async ({ 
       venda, 
-      itens 
+      itens,
+      pagamentos
     }: { 
       venda: Omit<Venda, "id" | "created_at">; 
-      itens: ItemVenda[] 
+      itens: ItemVenda[];
+      pagamentos?: PagamentoVenda[];
     }) => {
       const { data: vendaData, error: vendaError } = await supabase
         .from("vendas")
@@ -67,6 +74,21 @@ export const useVendas = () => {
         .insert(itensComVendaId);
       
       if (itensError) throw itensError;
+
+      // Inserir pagamentos múltiplos se existirem
+      if (pagamentos && pagamentos.length > 0) {
+        const pagamentosComVendaId = pagamentos.map(pag => ({
+          venda_id: vendaData.id,
+          forma_pagamento: pag.forma_pagamento,
+          valor: pag.valor,
+        }));
+
+        const { error: pagamentosError } = await supabase
+          .from("pagamentos_venda")
+          .insert(pagamentosComVendaId);
+        
+        if (pagamentosError) throw pagamentosError;
+      }
 
       return vendaData;
     },
