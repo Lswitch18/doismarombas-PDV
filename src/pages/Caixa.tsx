@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, ShoppingCart, Trash2, Plus, Minus, Search, DoorOpen, DoorClosed, ArrowUpCircle, ArrowDownCircle, Receipt, Banknote, CreditCard, Smartphone, X } from "lucide-react";
+import { Wallet, ShoppingCart, Trash2, Plus, Minus, Search, DoorOpen, DoorClosed, ArrowUpCircle, ArrowDownCircle, Receipt, Banknote, CreditCard, Smartphone, X, Percent } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useProdutos } from "@/hooks/useProdutos";
 import { useVendas } from "@/hooks/useVendas";
@@ -36,6 +36,8 @@ export default function Caixa() {
   const [modalFecharCaixa, setModalFecharCaixa] = useState(false);
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
+  const [desconto, setDesconto] = useState<number>(0);
+  const [descontoAtivo, setDescontoAtivo] = useState(false);
   const { produtos, isLoading } = useProdutos();
   const { criarVenda } = useVendas();
   const { caixaAberto, abrirCaixa, fecharCaixa, isLoading: isLoadingCaixa } = useCaixas();
@@ -108,7 +110,9 @@ export default function Caixa() {
     }));
   };
 
-  const total = cart.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+  const subtotal = cart.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+  const descontoValor = descontoAtivo ? desconto : 0;
+  const total = Math.max(0, subtotal - descontoValor);
   const totalPagamentos = pagamentos.reduce((sum, p) => sum + p.valor, 0);
   const valorRestante = total - totalPagamentos;
   const change = totalPagamentos > total ? totalPagamentos - total : 0;
@@ -171,7 +175,7 @@ export default function Caixa() {
       venda: {
         total,
         lucro_total: 0,
-        desconto: 0,
+        desconto: descontoValor,
         valor_recebido: totalPagamentos,
         troco: change,
         forma_pagamento: formaPrincipal,
@@ -186,6 +190,8 @@ export default function Caixa() {
     setReceivedAmount("");
     setSearchTerm("");
     setPagamentos([]);
+    setDesconto(0);
+    setDescontoAtivo(false);
   };
 
   const handleAbrirCaixa = async (valorInicial: number, observacoes?: string) => {
@@ -206,6 +212,8 @@ export default function Caixa() {
     setCart([]);
     setReceivedAmount("");
     setPagamentos([]);
+    setDesconto(0);
+    setDescontoAtivo(false);
   };
 
   const handleMovimentacao = async (tipo: 'entrada' | 'saida', valor: number, descricao: string) => {
@@ -467,6 +475,16 @@ export default function Caixa() {
                   <Separator />
 
                   <div className="space-y-2">
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>Subtotal:</span>
+                      <span>R$ {subtotal.toFixed(2)}</span>
+                    </div>
+                    {descontoAtivo && descontoValor > 0 && (
+                      <div className="flex justify-between text-sm text-orange-500">
+                        <span>Desconto:</span>
+                        <span>- R$ {descontoValor.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-lg font-semibold">
                       <span>Total:</span>
                       <span className="text-primary">R$ {total.toFixed(2)}</span>
@@ -554,6 +572,57 @@ export default function Caixa() {
                       </div>
                     );
                   })}
+                </div>
+
+                {/* Discount Card */}
+                <div
+                  className={`relative rounded-lg border-2 p-3 cursor-pointer transition-all ${
+                    descontoAtivo 
+                      ? 'border-orange-500 bg-orange-500/10 shadow-md' 
+                      : 'border-muted hover:border-orange-500/50 hover:bg-muted/50'
+                  }`}
+                  onClick={() => {
+                    if (!descontoAtivo) {
+                      setDescontoAtivo(true);
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-1.5 rounded-full bg-orange-500">
+                      <Percent className="h-4 w-4 text-white" />
+                    </div>
+                    <span className="font-medium text-sm">Desconto</span>
+                  </div>
+                  
+                  {descontoAtivo ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">R$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={desconto || ""}
+                        onChange={(e) => setDesconto(Number(e.target.value))}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-8 text-sm font-semibold"
+                        max={subtotal}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDescontoAtivo(false);
+                          setDesconto(0);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Clique para adicionar</p>
+                  )}
                 </div>
 
                 <Separator />
