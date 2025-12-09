@@ -86,10 +86,15 @@ export function FecharCaixaModal({
     if (vendas) {
       // Buscar pagamentos detalhados
       const vendaIds = vendas.map(v => v.id);
-      const { data: pagamentos } = await supabase
-        .from("pagamentos_venda")
-        .select("*")
-        .in("venda_id", vendaIds);
+      let pagamentos: any[] = [];
+      
+      if (vendaIds.length > 0) {
+        const { data } = await supabase
+          .from("pagamentos_venda")
+          .select("*")
+          .in("venda_id", vendaIds);
+        pagamentos = data || [];
+      }
 
       let totalDinheiro = 0;
       let totalPix = 0;

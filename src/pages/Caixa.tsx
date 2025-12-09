@@ -150,6 +150,15 @@ export default function Caixa() {
       return;
     }
 
+    if (pagamentos.length === 0) {
+      toast({
+        title: "Forma de pagamento",
+        description: "Selecione pelo menos uma forma de pagamento",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (totalPagamentos < total) {
       toast({
         title: "Valor insuficiente",
@@ -167,9 +176,10 @@ export default function Caixa() {
     }));
 
     // Forma principal de pagamento é a de maior valor
-    const formaPrincipal = pagamentos.reduce((prev, curr) => 
-      curr.valor > prev.valor ? curr : prev
-    ).forma_pagamento;
+    const pagamentosValidos = pagamentos.filter(p => p.valor > 0);
+    const formaPrincipal = pagamentosValidos.length > 0
+      ? pagamentosValidos.reduce((prev, curr) => curr.valor > prev.valor ? curr : prev).forma_pagamento
+      : "dinheiro";
 
     await criarVenda.mutateAsync({
       venda: {
