@@ -9,7 +9,7 @@ export interface Venda {
   total: number;
   lucro_total: number;
   desconto: number;
-  acrescimo?: number;
+  acrescimo: number;
   valor_recebido?: number;
   troco?: number;
   forma_pagamento: string;
