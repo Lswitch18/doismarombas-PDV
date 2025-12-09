@@ -57,15 +57,46 @@ export const useVendas = () => {
       itens: ItemVenda[];
       pagamentos?: PagamentoVenda[];
     }) => {
+      // Buscar dados dos produtos para calcular lucro e preço de aquisição
+      const produtosIds = itens.map(item => item.produto_id);
+      const { data: produtosData, error: produtosError } = await supabase
+        .from("produtos")
+        .select("id, preco_aquisicao, estoque")
+        .in("id", produtosIds);
+      
+      if (produtosError) throw produtosError;
+
+      // Calcular lucro total da venda
+      let lucroTotalVenda = 0;
+      const itensComLucro = itens.map(item => {
+        const produto = produtosData?.find(p => p.id === item.produto_id);
+        const precoAquisicao = produto?.preco_aquisicao || 0;
+        const lucroUnitario = item.preco_unitario - precoAquisicao;
+        const lucroTotal = lucroUnitario * item.quantidade;
+        lucroTotalVenda += lucroTotal;
+        
+        return {
+          ...item,
+          preco_aquisicao: precoAquisicao,
+          lucro_unitario: lucroUnitario,
+          lucro_total: lucroTotal,
+        };
+      });
+
+      // Criar venda com lucro calculado
       const { data: vendaData, error: vendaError } = await supabase
         .from("vendas")
-        .insert(venda)
+        .insert({
+          ...venda,
+          lucro_total: lucroTotalVenda,
+        })
         .select()
         .single();
       
       if (vendaError) throw vendaError;
 
-      const itensComVendaId = itens.map(item => ({
+      // Inserir itens da venda
+      const itensComVendaId = itensComLucro.map(item => ({
         ...item,
         venda_id: vendaData.id,
       }));
@@ -75,6 +106,20 @@ export const useVendas = () => {
         .insert(itensComVendaId);
       
       if (itensError) throw itensError;
+
+      // Atualizar estoque dos produtos
+      for (const item of itens) {
+        const produto = produtosData?.find(p => p.id === item.produto_id);
+        if (produto) {
+          const novoEstoque = produto.estoque - item.quantidade;
+          const { error: estoqueError } = await supabase
+            .from("produtos")
+            .update({ estoque: novoEstoque })
+            .eq("id", item.produto_id);
+          
+          if (estoqueError) throw estoqueError;
+        }
+      }
 
       // Inserir pagamentos múltiplos se existirem
       if (pagamentos && pagamentos.length > 0) {
@@ -98,7 +143,8 @@ export const useVendas = () => {
       queryClient.invalidateQueries({ queryKey: ["produtos"] });
       toast({ title: "Venda finalizada com sucesso!" });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Erro ao finalizar venda:", error);
       toast({ title: "Erro ao finalizar venda", variant: "destructive" });
     },
   });
