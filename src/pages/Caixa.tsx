@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, ShoppingCart, Trash2, Plus, Minus, Search, DoorOpen, DoorClosed, ArrowUpCircle, ArrowDownCircle, Receipt, Banknote, CreditCard, Smartphone, X, Percent } from "lucide-react";
+import { Wallet, ShoppingCart, Trash2, Plus, Minus, Search, DoorOpen, DoorClosed, ArrowUpCircle, ArrowDownCircle, Receipt, Banknote, CreditCard, Smartphone, X, Percent, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useProdutos } from "@/hooks/useProdutos";
 import { useVendas } from "@/hooks/useVendas";
@@ -38,6 +38,8 @@ export default function Caixa() {
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [desconto, setDesconto] = useState<number>(0);
   const [descontoAtivo, setDescontoAtivo] = useState(false);
+  const [acrescimo, setAcrescimo] = useState<number>(0);
+  const [acrescimoAtivo, setAcrescimoAtivo] = useState(false);
   const { produtos, isLoading } = useProdutos();
   const { criarVenda } = useVendas();
   const { caixaAberto, abrirCaixa, fecharCaixa, isLoading: isLoadingCaixa } = useCaixas();
@@ -112,7 +114,8 @@ export default function Caixa() {
 
   const subtotal = cart.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
   const descontoValor = descontoAtivo ? desconto : 0;
-  const total = Math.max(0, subtotal - descontoValor);
+  const acrescimoValor = acrescimoAtivo ? acrescimo : 0;
+  const total = Math.max(0, subtotal - descontoValor + acrescimoValor);
   const totalPagamentos = pagamentos.reduce((sum, p) => sum + p.valor, 0);
   const valorRestante = total - totalPagamentos;
   const change = totalPagamentos > total ? totalPagamentos - total : 0;
@@ -186,6 +189,7 @@ export default function Caixa() {
         total,
         lucro_total: 0,
         desconto: descontoValor,
+        acrescimo: acrescimoValor,
         valor_recebido: totalPagamentos,
         troco: change,
         forma_pagamento: formaPrincipal,
@@ -202,6 +206,8 @@ export default function Caixa() {
     setPagamentos([]);
     setDesconto(0);
     setDescontoAtivo(false);
+    setAcrescimo(0);
+    setAcrescimoAtivo(false);
   };
 
   const handleAbrirCaixa = async (valorInicial: number, observacoes?: string) => {
@@ -224,6 +230,8 @@ export default function Caixa() {
     setPagamentos([]);
     setDesconto(0);
     setDescontoAtivo(false);
+    setAcrescimo(0);
+    setAcrescimoAtivo(false);
   };
 
   const handleMovimentacao = async (tipo: 'entrada' | 'saida', valor: number, descricao: string) => {
@@ -584,55 +592,108 @@ export default function Caixa() {
                   })}
                 </div>
 
-                {/* Discount Card */}
-                <div
-                  className={`relative rounded-lg border-2 p-3 cursor-pointer transition-all ${
-                    descontoAtivo 
-                      ? 'border-orange-500 bg-orange-500/10 shadow-md' 
-                      : 'border-muted hover:border-orange-500/50 hover:bg-muted/50'
-                  }`}
-                  onClick={() => {
-                    if (!descontoAtivo) {
-                      setDescontoAtivo(true);
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="p-1.5 rounded-full bg-orange-500">
-                      <Percent className="h-4 w-4 text-white" />
+                {/* Desconto e Acréscimo Cards */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Discount Card */}
+                  <div
+                    className={`relative rounded-lg border-2 p-3 cursor-pointer transition-all ${
+                      descontoAtivo 
+                        ? 'border-orange-500 bg-orange-500/10 shadow-md' 
+                        : 'border-muted hover:border-orange-500/50 hover:bg-muted/50'
+                    }`}
+                    onClick={() => {
+                      if (!descontoAtivo) {
+                        setDescontoAtivo(true);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-1.5 rounded-full bg-orange-500">
+                        <Percent className="h-4 w-4 text-white" />
+                      </div>
+                      <span className="font-medium text-sm">Desconto</span>
                     </div>
-                    <span className="font-medium text-sm">Desconto</span>
+                    
+                    {descontoAtivo ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">R$</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={desconto || ""}
+                          onChange={(e) => setDesconto(Number(e.target.value))}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-8 text-sm font-semibold"
+                          max={subtotal}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDescontoAtivo(false);
+                            setDesconto(0);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Clique para adicionar</p>
+                    )}
                   </div>
-                  
-                  {descontoAtivo ? (
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">R$</span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={desconto || ""}
-                        onChange={(e) => setDesconto(Number(e.target.value))}
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-8 text-sm font-semibold"
-                        max={subtotal}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDescontoAtivo(false);
-                          setDesconto(0);
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
+
+                  {/* Acrescimo Card */}
+                  <div
+                    className={`relative rounded-lg border-2 p-3 cursor-pointer transition-all ${
+                      acrescimoAtivo 
+                        ? 'border-emerald-500 bg-emerald-500/10 shadow-md' 
+                        : 'border-muted hover:border-emerald-500/50 hover:bg-muted/50'
+                    }`}
+                    onClick={() => {
+                      if (!acrescimoAtivo) {
+                        setAcrescimoAtivo(true);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-1.5 rounded-full bg-emerald-500">
+                        <TrendingUp className="h-4 w-4 text-white" />
+                      </div>
+                      <span className="font-medium text-sm">Acréscimo</span>
                     </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">Clique para adicionar</p>
-                  )}
+                    
+                    {acrescimoAtivo ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">R$</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={acrescimo || ""}
+                          onChange={(e) => setAcrescimo(Number(e.target.value))}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-8 text-sm font-semibold"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAcrescimoAtivo(false);
+                            setAcrescimo(0);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Clique para adicionar</p>
+                    )}
+                  </div>
                 </div>
 
                 <Separator />

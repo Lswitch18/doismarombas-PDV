@@ -480,6 +480,7 @@ export type Database = {
       }
       vendas: {
         Row: {
+          acrescimo: number | null
           caixa_id: string | null
           cliente_id: string | null
           created_at: string | null
@@ -494,6 +495,7 @@ export type Database = {
           valor_recebido: number | null
         }
         Insert: {
+          acrescimo?: number | null
           caixa_id?: string | null
           cliente_id?: string | null
           created_at?: string | null
@@ -508,6 +510,7 @@ export type Database = {
           valor_recebido?: number | null
         }
         Update: {
+          acrescimo?: number | null
           caixa_id?: string | null
           cliente_id?: string | null
           created_at?: string | null
