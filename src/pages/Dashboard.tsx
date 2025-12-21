@@ -21,6 +21,7 @@ import { useZerarContador } from "@/hooks/useZerarContador";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 import { VendasDetalhesModal } from "@/components/Dashboard/VendasDetalhesModal";
 import { ZerarContadorModal } from "@/components/Dashboard/ZerarContadorModal";
+import PremiumIconButton from "@/components/Dashboard/PremiumIconButton";
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, subDays, format as formatDate } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -178,15 +179,18 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">Visão geral do seu negócio</p>
         </div>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => setZerarModalAberto(true)}
-          className="gap-2"
-        >
-          <RotateCcw className="h-4 w-4" />
-          Zerar Contador
-        </Button>
+        <div className="flex items-center gap-3">
+          <PremiumIconButton />
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setZerarModalAberto(true)}
+            className="gap-2"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Zerar Contador
+          </Button>
+        </div>
       </div>
 
       {/* Cards de Estatísticas - Clicáveis */}
