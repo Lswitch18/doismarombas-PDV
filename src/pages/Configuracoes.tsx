@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AlterarSenhaModal } from "@/components/Configuracoes/AlterarSenhaModal";
 import { BackupDadosModal } from "@/components/Configuracoes/BackupDadosModal";
-import PremiumFeatureCard from "@/components/Configuracoes/PremiumFeatureCard";
 
 export default function Configuracoes() {
   const [loading, setLoading] = useState(true);
@@ -224,8 +223,7 @@ export default function Configuracoes() {
         </CardContent>
       </Card>
 
-      {/* Card Premium - Loja Online */}
-      <PremiumFeatureCard />
+      {/* Botão Salvar */}
 
       {/* Botão Salvar */}
       <div className="flex justify-end gap-4 animate-fade-up" style={{ animationDelay: "0.5s" }}>
